@@ -82,7 +82,7 @@ public class BleDevicesManager implements BluetoothAdapter.LeScanCallback, BLESe
     }
 
 
-    public String getNameByUUID(String uuid) {
+    public String getNameByUUID2(String uuid) {
 
         if (uuidToNameMap != null) {
             return uuidToNameMap.get(uuid);

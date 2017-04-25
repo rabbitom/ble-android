@@ -58,6 +58,7 @@ public class BleDevice implements DeviceStateCallback {
     private Context context;
 
     private HashMap<String, BluetoothGattCharacteristic> gattCharacteristicMap = new HashMap<>();
+    private HashMap<String, String> uuidToNameMap = new HashMap<>();
 
     public BleDevice(Context context, BluetoothDevice device, JSONObject jsonObject) {
         this.context = context;
@@ -71,6 +72,21 @@ public class BleDevice implements DeviceStateCallback {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+
+        if (deviceObject != null) {
+            LogUtil.i(TAG,"===deviceObject.services.size()= "+deviceObject.services.size());
+            for (int i = 0; i < deviceObject.services.size(); i++) {
+                Service service = deviceObject.services.get(i);
+                LogUtil.i(TAG,"===service.characteristics.size()= "+service.characteristics.size());
+
+                for (int j = 0; j < service.characteristics.size(); j++) {
+                    Characteristic characteristic = service.characteristics.get(j);
+                    LogUtil.i(TAG,"===characteristic.uuid= "+characteristic.uuid);
+                    uuidToNameMap.put(characteristic.uuid, characteristic.name);
+                }
+            }
+        }
+
     }
 
     //解析JSON
@@ -113,6 +129,7 @@ public class BleDevice implements DeviceStateCallback {
                 characteristic.name = cName;
                 characteristic.uuid = cUuid;
                 characteristic.properties = properties;
+                characteristics.add(characteristic);
             }
             serv.name = sName;
             serv.uuid = sUuid;
@@ -300,18 +317,21 @@ public class BleDevice implements DeviceStateCallback {
             //连接状态改变
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+
                 //if (status == BluetoothGatt.GATT_SUCCESS) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     connected = true;
                     onDeviceConnected(deviceKey);
-                    LogUtil.i("ble", "connected to device");
+                    LogUtil.i(TAG, "connected to device");
                     refreshDeviceCache(gatt);
                     if (gattOperationQueue != null)
                         gattOperationQueue.clear();
-                    if (gatt.getServices().size() == 0)
+                    LogUtil.i(TAG, "gatt.getServices().size()="+gatt.getServices().size());
+                    if (gatt.getServices().size() == 0) {
                         gatt.discoverServices();
+                    }
                     else {
-                        LogUtil.i("ble", "device already has services, skip discover");
+                        LogUtil.i(TAG, "device already has services, skip discover");
                         onServicesDiscovered(gatt, BluetoothGatt.GATT_SUCCESS);
                     }
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
@@ -324,6 +344,8 @@ public class BleDevice implements DeviceStateCallback {
             //服务发现
             @Override
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+                Log.i(TAG, "onServicesDiscovered");
+
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     Log.i(TAG, "services discovered");
 
@@ -335,7 +357,6 @@ public class BleDevice implements DeviceStateCallback {
                         deviceServUuidList.add(services.get(i).getUuid().toString());
                     }
 
-
                     LogUtil.i(TAG, "services count = " + services.size());
 
                     ArrayList<String> deviceCharactUuidList = new ArrayList<>();
@@ -346,7 +367,7 @@ public class BleDevice implements DeviceStateCallback {
                             UUID cUuid = characteristic.getUuid();
                             Log.i(TAG, "ServicesDiscovered_uuid = " + characteristic.getUuid());
                             deviceCharactUuidList.add(cUuid.toString());
-                            String cName = BleDevicesManager.getInstance(context).getNameByUUID(cUuid.toString());
+                            String cName = uuidToNameMap.get(cUuid.toString());
                             if (cName != null) {
                                 gattCharacteristicMap.put(cName, characteristic);
                             }
@@ -386,7 +407,7 @@ public class BleDevice implements DeviceStateCallback {
                 byte[] data = characteristic.getValue();
                 if (data != null) {
                     LogUtil.i(TAG, "received data: " + BleUtility.MakeHexString(data));
-                    onDeviceReceivedData(deviceKey, BleDevicesManager.getInstance(context).getNameByUUID(uuid.toString()), data);
+                    onDeviceReceivedData(deviceKey, uuidToNameMap.get(uuid.toString()), data);
                     // onReceiveData(data);
                 }
             }
