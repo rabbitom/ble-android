@@ -1,4 +1,4 @@
-package net.erabbit.view.dialog;
+package net.erabbit.ble.dialog;
 
 import android.content.Context;
 import android.view.View;
@@ -6,7 +6,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import net.erabbit.R;
+import net.erabbit.ble.R;
 
 /**
  * Created by ziv on 17/3/17.
@@ -37,7 +37,7 @@ public class GeneralAlertDialog extends BaseDialog {
     @Override
     protected void init() {
         super.init();
-        operateLayout = (LinearLayout)view.findViewById(R.id.operateLayout);
+        operateLayout = (LinearLayout) view.findViewById(R.id.operateLayout);
         rightLayout = (LinearLayout) view.findViewById(R.id.rightLayout);
         leftBtn = (Button) view.findViewById(R.id.leftBtn);
         rightBtn = (Button) view.findViewById(R.id.rightBtn);
@@ -65,7 +65,7 @@ public class GeneralAlertDialog extends BaseDialog {
         return this;
     }
 
-    public void showDialog(String title, String context,String leftText,String rightText, View.OnClickListener onLeftBtnClickListener, View.OnClickListener onRightBtnClickListener) {
+    public void showDialog(String title, String context, String leftText, String rightText, View.OnClickListener onLeftBtnClickListener, View.OnClickListener onRightBtnClickListener) {
         titleText.setText(title);
         contentText.setText(context);
         leftBtn.setText(leftText);

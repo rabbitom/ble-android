@@ -1,4 +1,4 @@
-package net.erabbit.view.dialog;
+package net.erabbit.ble.dialog;
 
 import android.app.Activity;
 import android.app.Dialog;

@@ -1,4 +1,4 @@
-package net.erabbit;
+package net.erabbit.ble;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -6,7 +6,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.support.v4.content.LocalBroadcastManager;
 
-import net.erabbit.interfaces.BLESearchCallback;
+import net.erabbit.ble.interfaces.BLESearchCallback;
+
+import java.util.Map;
 
 /**
  * Created by ziv on 2017/4/20.
@@ -37,7 +39,7 @@ public class BleSearchReceiver extends BroadcastReceiver implements BLESearchCal
     public void onReceive(Context context, Intent intent) {
         String deviceID = intent.getStringExtra("deviceID");
         int rssi = intent.getIntExtra("rssi", 0);
-        byte[] data = intent.getByteArrayExtra("data");
+        Map<Integer, byte[]> data = (Map<Integer, byte[]>) intent.getSerializableExtra("data");
         String deviceType = intent.getStringExtra("deviceType");
         switch (intent.getAction()) {
             case BLE_SEARCH_STARTED:
@@ -72,7 +74,7 @@ public class BleSearchReceiver extends BroadcastReceiver implements BLESearchCal
     }
 
     @Override
-    public void onFoundDevice(String deviceID, int rssi, byte[] data, String deviceType) {
+    public void onFoundDevice(String deviceID, int rssi, Map<Integer, byte[]> data, String deviceType) {
 
     }
 

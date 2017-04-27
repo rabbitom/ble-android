@@ -1,11 +1,12 @@
-package net.erabbit;
+package net.erabbit.ble;
 
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.util.Log;
 
-import net.erabbit.utils.BleUtility;
+
+import net.erabbit.ble.utils.BleUtility;
 
 import java.util.UUID;
 

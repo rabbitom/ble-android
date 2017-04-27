@@ -1,4 +1,6 @@
-package net.erabbit.interfaces;
+package net.erabbit.ble.interfaces;
+
+import java.util.Map;
 
 /**
  * Created by ziv on 2017/4/21.
@@ -9,7 +11,7 @@ public interface BLESearchCallback {
 
     void onSearchTimeOut();
 
-    void onFoundDevice(String deviceID, int rssi, byte[] data, String deviceType);
+    void onFoundDevice(String deviceID, int rssi, Map<Integer, byte[]> data, String deviceType);
 
     void onAdvertisementUpdated();
 

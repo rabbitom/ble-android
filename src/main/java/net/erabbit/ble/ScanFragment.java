@@ -1,4 +1,4 @@
-package net.erabbit;
+package net.erabbit.ble;
 import android.Manifest;
 import android.app.Fragment;
 import android.bluetooth.BluetoothAdapter;
@@ -10,8 +10,9 @@ import android.provider.Settings;
 import android.support.v4.content.ContextCompat;
 import android.view.View;
 
-import net.erabbit.utils.LogUtil;
-import net.erabbit.view.dialog.GeneralAlertDialog;
+import net.erabbit.ble.dialog.GeneralAlertDialog;
+import net.erabbit.ble.utils.LogUtil;
+
 import static android.app.Activity.RESULT_OK;
 
 /**
@@ -75,8 +76,6 @@ public class ScanFragment extends Fragment {
 
                         requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
                     } else {
-                        //toPair();
-                        //scanLeDevice(true);
                         bluetoothStateCallback.onBluetoothEnabled();
                     }
                 } else {
@@ -85,7 +84,7 @@ public class ScanFragment extends Fragment {
 
             } else {
                 // ToastUtil.showToast("蓝牙不可用");
-                LogUtil.i(TAG, "蓝牙不可用,开始扫描");
+                LogUtil.i(TAG, "蓝牙不可用");
             }
         }
     }

@@ -1,4 +1,4 @@
-package net.erabbit;
+package net.erabbit.ble;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -13,13 +13,13 @@ import android.content.Intent;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import net.erabbit.entity.Advertisement;
-import net.erabbit.entity.Characteristic;
-import net.erabbit.entity.DeviceObject;
-import net.erabbit.entity.Service;
-import net.erabbit.interfaces.DeviceStateCallback;
-import net.erabbit.utils.BleUtility;
-import net.erabbit.utils.LogUtil;
+import net.erabbit.ble.entity.Advertisement;
+import net.erabbit.ble.entity.Characteristic;
+import net.erabbit.ble.entity.DeviceObject;
+import net.erabbit.ble.entity.Service;
+import net.erabbit.ble.interfaces.DeviceStateCallback;
+import net.erabbit.ble.utils.BleUtility;
+import net.erabbit.ble.utils.LogUtil;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -48,17 +48,16 @@ public class BleDevice implements DeviceStateCallback {
     private transient BluetoothDevice nativeDevice;//系统原生的蓝牙设备对象
     private HashMap advertisementData;//广播数据，字典类型
 
-    private static BluetoothManager bluetoothManager;
 
     private transient BluetoothGatt btGatt;
-    private transient BluetoothGattService btService;
-    protected DeviceObject deviceObject;
+    protected DeviceObject deviceObject;//JSON文件解析返回的对象
 
     private LocalBroadcastManager lbm;
     private Context context;
 
     private HashMap<String, BluetoothGattCharacteristic> gattCharacteristicMap = new HashMap<>();
     private HashMap<String, String> uuidToNameMap = new HashMap<>();
+    int deviceRSSI;
 
     public BleDevice(Context context, BluetoothDevice device, JSONObject jsonObject) {
         this.context = context;
@@ -74,14 +73,13 @@ public class BleDevice implements DeviceStateCallback {
         }
 
         if (deviceObject != null) {
-            LogUtil.i(TAG,"===deviceObject.services.size()= "+deviceObject.services.size());
+            LogUtil.i(TAG, "===deviceObject.services.size()= " + deviceObject.services.size());
             for (int i = 0; i < deviceObject.services.size(); i++) {
                 Service service = deviceObject.services.get(i);
-                LogUtil.i(TAG,"===service.characteristics.size()= "+service.characteristics.size());
-
+                LogUtil.i(TAG, "===service.characteristics.size()= " + service.characteristics.size());
                 for (int j = 0; j < service.characteristics.size(); j++) {
                     Characteristic characteristic = service.characteristics.get(j);
-                    LogUtil.i(TAG,"===characteristic.uuid= "+characteristic.uuid);
+                    LogUtil.i(TAG, "===characteristic.uuid= " + characteristic.uuid);
                     uuidToNameMap.put(characteristic.uuid, characteristic.name);
                 }
             }
@@ -157,6 +155,10 @@ public class BleDevice implements DeviceStateCallback {
         return connected;
     }
 
+    public DeviceObject getDeviceObject() {
+        return deviceObject;
+    }
+
 
     /**
      * 建立连接
@@ -208,6 +210,8 @@ public class BleDevice implements DeviceStateCallback {
 
     /**
      * 读取数据
+     *
+     * @param name 数据点
      */
     public void readData(String name) {
 
@@ -225,7 +229,9 @@ public class BleDevice implements DeviceStateCallback {
     }
 
     /**
-     * 开始接收数据
+     * 开始接收数据（通知）
+     *
+     * @param name 数据点
      */
     public void startReceiveData(String name) {
 
@@ -242,7 +248,9 @@ public class BleDevice implements DeviceStateCallback {
     }
 
     /**
-     * 停止接收数据
+     * 停止接收数据（通知）
+     *
+     * @param name 数据点
      */
     public void stopReceiveData(String name) {
         BluetoothGattCharacteristic characteristic = gattCharacteristicMap.get(name);
@@ -261,19 +269,9 @@ public class BleDevice implements DeviceStateCallback {
      */
     public int readRSSI() {
 
-        return 0;
+        return deviceRSSI;
     }
 
-
-    //写特性
-    private void writeCharacteristicValue(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, byte[] value) {
-        BluetoothGattOperation operation = new BluetoothGattOperation(
-                BluetoothGattOperation.WRITE_CHARACTERISTIC,
-                gatt,
-                characteristic,
-                value);
-        addOperation(operation);
-    }
 
     //GATT操作队列
     private transient Queue<BluetoothGattOperation> gattOperationQueue;
@@ -298,16 +296,6 @@ public class BleDevice implements DeviceStateCallback {
         }
     }
 
-    //使能通知
-    private void EnableNotification(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-        BluetoothGattOperation operation = new BluetoothGattOperation(
-                BluetoothGattOperation.ENABLE_NOTIFICATION,
-                gatt,
-                characteristic,
-                null);
-        addOperation(operation);
-    }
-
 
     //GATT回调函数
     private transient BluetoothGattCallback mGattCallback;
@@ -322,15 +310,14 @@ public class BleDevice implements DeviceStateCallback {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     connected = true;
                     onDeviceConnected(deviceKey);
-                    LogUtil.i(TAG, "connected to device");
-                    refreshDeviceCache(gatt);
+                    LogUtil.i(TAG, "connected to device success");
+                    //refreshDeviceCache(gatt);
                     if (gattOperationQueue != null)
                         gattOperationQueue.clear();
-                    LogUtil.i(TAG, "gatt.getServices().size()="+gatt.getServices().size());
+                    LogUtil.i(TAG, "gatt.getServices().size()=" + gatt.getServices().size());
                     if (gatt.getServices().size() == 0) {
                         gatt.discoverServices();
-                    }
-                    else {
+                    } else {
                         LogUtil.i(TAG, "device already has services, skip discover");
                         onServicesDiscovered(gatt, BluetoothGatt.GATT_SUCCESS);
                     }
@@ -344,10 +331,10 @@ public class BleDevice implements DeviceStateCallback {
             //服务发现
             @Override
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-                Log.i(TAG, "onServicesDiscovered");
+                //Log.i(TAG, "onServicesDiscovered");
 
                 if (status == BluetoothGatt.GATT_SUCCESS) {
-                    Log.i(TAG, "services discovered");
+                    Log.i(TAG, "services discovered success");
 
                     boolean isMatch = true;
                     List<BluetoothGattService> services = gatt.getServices();
@@ -360,15 +347,17 @@ public class BleDevice implements DeviceStateCallback {
                     LogUtil.i(TAG, "services count = " + services.size());
 
                     ArrayList<String> deviceCharactUuidList = new ArrayList<>();
-                    //保存所有服务的特性
+                    //保存所有服务的特征
+                    LogUtil.i(TAG, "====uuidToNameMap=" + uuidToNameMap.toString());
                     for (BluetoothGattService service : services) {
-                        List<BluetoothGattCharacteristic> characteristics = btService.getCharacteristics();
+                        List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
                         for (BluetoothGattCharacteristic characteristic : characteristics) {
                             UUID cUuid = characteristic.getUuid();
-                            Log.i(TAG, "ServicesDiscovered_uuid = " + characteristic.getUuid());
+                            Log.i(TAG, "characteristic_uuid = " + characteristic.getUuid());
                             deviceCharactUuidList.add(cUuid.toString());
                             String cName = uuidToNameMap.get(cUuid.toString());
                             if (cName != null) {
+                                Log.i(TAG, "characteristic_cName = " + cName);
                                 gattCharacteristicMap.put(cName, characteristic);
                             }
                         }
@@ -448,8 +437,10 @@ public class BleDevice implements DeviceStateCallback {
             @Override
             public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
                 //super.onReadRemoteRssi(gatt, rssi, status);
-                if (status == BluetoothGatt.GATT_SUCCESS)
+                if (status == BluetoothGatt.GATT_SUCCESS) {
                     onDeviceRSSIUpdated(deviceKey, rssi);
+                    deviceRSSI = rssi;
+                }
             }
         };
     }

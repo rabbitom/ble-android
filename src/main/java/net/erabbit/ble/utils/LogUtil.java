@@ -1,4 +1,4 @@
-package net.erabbit.utils;
+package net.erabbit.ble.utils;
 
 import android.util.Log;
 

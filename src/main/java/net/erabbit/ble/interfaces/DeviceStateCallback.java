@@ -1,4 +1,4 @@
-package net.erabbit.interfaces;
+package net.erabbit.ble.interfaces;
 
 import java.io.Serializable;
 
