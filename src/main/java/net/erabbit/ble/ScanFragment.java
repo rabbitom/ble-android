@@ -1,4 +1,5 @@
 package net.erabbit.ble;
+
 import android.Manifest;
 import android.app.Fragment;
 import android.bluetooth.BluetoothAdapter;
@@ -11,6 +12,7 @@ import android.support.v4.content.ContextCompat;
 import android.view.View;
 
 import net.erabbit.ble.dialog.GeneralAlertDialog;
+import net.erabbit.ble.interfaces.BLESearchCallback;
 import net.erabbit.ble.utils.LogUtil;
 
 import static android.app.Activity.RESULT_OK;
@@ -27,7 +29,7 @@ public class ScanFragment extends Fragment {
 
     public final String TAG = this.getClass().getSimpleName();
     private BluetoothStateCallback bluetoothStateCallback;
-
+    private BLESearchCallback bleSearchCallback;
 
     public void setBluetoothStateCallback(BluetoothStateCallback bluetoothStateCallback) {
         this.bluetoothStateCallback = bluetoothStateCallback;
@@ -38,24 +40,27 @@ public class ScanFragment extends Fragment {
     }
 
 
+    public void setBleSearchCallback(BLESearchCallback bleSearchCallback) {
+        this.bleSearchCallback = bleSearchCallback;
+    }
+
     public void tryScan(BluetoothAdapter bluetoothAdapter) {
         //确认蓝牙是否可用，不可用则弹框请求
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, 0);
         } else {
-            //ToastUtil.showToast("蓝牙可用,开始扫描");
-            LogUtil.i(TAG, "getActivity()=" + getActivity());
+            //蓝牙可用,开始扫描
             if (getActivity() != null) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
                     if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                         requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
                     } else {
-                        //scanLeDevice(true);//开始扫描
+                        //开始扫描
                         bluetoothStateCallback.onBluetoothEnabled();
                     }
-                }else{
+                } else {
                     bluetoothStateCallback.onBluetoothEnabled();
                 }
             }
@@ -69,7 +74,7 @@ public class ScanFragment extends Fragment {
         if (requestCode == 0) {
             LogUtil.i(TAG, "=====resultCode=" + resultCode);
             if (resultCode == RESULT_OK) {
-                //ToastUtil.showToast("蓝牙可用,开始扫描");
+                //蓝牙可用,开始扫描
                 LogUtil.i(TAG, "蓝牙可用,开始扫描");
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -84,7 +89,10 @@ public class ScanFragment extends Fragment {
 
             } else {
                 // ToastUtil.showToast("蓝牙不可用");
-                LogUtil.i(TAG, "蓝牙不可用");
+                if (bleSearchCallback != null) {
+                    bleSearchCallback.onSearchError(BLESearchCallback.ERROR_BLUETOOTH_DISABLE, "蓝牙未开启");
+                }
+                LogUtil.i(TAG, "蓝牙未开启");
             }
         }
     }
@@ -104,6 +112,10 @@ public class ScanFragment extends Fragment {
                     }
 
                 } else {
+
+                    if (bleSearchCallback != null) {
+                        bleSearchCallback.onSearchError(BLESearchCallback.ERROR_NO_BLUETOOTH_PERMISSION, "未授权使用蓝牙权限");
+                    }
                     // 判断用户是否 点击了不再提醒。(检测该权限是否还可以申请)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         boolean b = shouldShowRequestPermissionRationale(permissions[0]);

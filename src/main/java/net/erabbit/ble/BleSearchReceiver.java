@@ -21,11 +21,13 @@ public class BleSearchReceiver extends BroadcastReceiver implements BLESearchCal
     public static final String BLE_FOUND_DEVICE = "FoundDevice";
     public static final String BLE_ADVERTISEMENT_UPDATED = "AdvertisementUpdated";
     public static final String BLE_RSSI_UPDATED = "RSSIUpdated";
+    public static final String BLE_SEARCH_ERROR = "SearchError";
 
 
     public void registerReceiver(LocalBroadcastManager lbm) {
 
         IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(BLE_SEARCH_ERROR);
         intentFilter.addAction(BLE_SEARCH_STARTED);
         intentFilter.addAction(BLE_SEARCH_TIME_OUT);
         intentFilter.addAction(BLE_FOUND_DEVICE);
@@ -37,11 +39,17 @@ public class BleSearchReceiver extends BroadcastReceiver implements BLESearchCal
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        int errId = intent.getIntExtra("errId", 0);
+        String error = intent.getStringExtra("error");
         String deviceID = intent.getStringExtra("deviceID");
         int rssi = intent.getIntExtra("rssi", 0);
         Map<Integer, byte[]> data = (Map<Integer, byte[]>) intent.getSerializableExtra("data");
         String deviceType = intent.getStringExtra("deviceType");
         switch (intent.getAction()) {
+            case BLE_SEARCH_ERROR:
+
+                onSearchError(errId, error);
+                break;
             case BLE_SEARCH_STARTED:
 
                 onSearchStarted();
@@ -55,12 +63,17 @@ public class BleSearchReceiver extends BroadcastReceiver implements BLESearchCal
                 break;
             case BLE_ADVERTISEMENT_UPDATED:
 
-                onAdvertisementUpdated();
+                onAdvertisementUpdated(deviceID,data);
                 break;
             case BLE_RSSI_UPDATED:
                 onRSSIUpdated(deviceID, rssi);
                 break;
         }
+    }
+
+    @Override
+    public void onSearchError(int errId, String error) {
+
     }
 
     @Override
@@ -79,7 +92,7 @@ public class BleSearchReceiver extends BroadcastReceiver implements BLESearchCal
     }
 
     @Override
-    public void onAdvertisementUpdated() {
+    public void onAdvertisementUpdated(String deviceID,Map<Integer, byte[]> data) {
 
     }
 

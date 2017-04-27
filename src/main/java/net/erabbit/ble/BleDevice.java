@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
 
@@ -46,7 +47,7 @@ public class BleDevice implements DeviceStateCallback {
     private String deviceName;//设备名称，默认使用广播名或设备名，可以修改
     private boolean connected;//（只读）获取蓝牙连接状态，布尔类型
     private transient BluetoothDevice nativeDevice;//系统原生的蓝牙设备对象
-    private HashMap advertisementData;//广播数据，字典类型
+    private Map advertisementData;//广播数据，字典类型
 
 
     private transient BluetoothGatt btGatt;
@@ -159,6 +160,14 @@ public class BleDevice implements DeviceStateCallback {
         return deviceObject;
     }
 
+
+    public void setAdvertisementData(Map data) {
+        this.advertisementData = data;
+    }
+
+    public Map getAdvertisementData(){
+        return  advertisementData;
+    }
 
     /**
      * 建立连接
