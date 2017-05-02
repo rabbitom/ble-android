@@ -199,7 +199,6 @@ public class BleDevice implements DeviceStateCallback {
 
     /**
      * 发送数据
-     *
      * @param name 数据点
      * @param data 数据内容
      */
