@@ -25,6 +25,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -40,6 +42,25 @@ import java.util.UUID;
  */
 
 public class BleDevice implements DeviceStateCallback {
+
+    public static JSONObject loadJsonAsset(Context context, String filename) {
+        JSONObject testjson = null;
+        try {
+            InputStreamReader isr = new InputStreamReader(context.getAssets().open(filename), "UTF-8");
+            BufferedReader br = new BufferedReader(isr);
+            String line;
+            StringBuilder builder = new StringBuilder();
+            while ((line = br.readLine()) != null) {
+                builder.append(line);
+            }
+            br.close();
+            isr.close();
+            testjson = new JSONObject(builder.toString());//builder读取了JSON中的数据。
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return testjson;
+    }
 
     private String TAG = "ble ";
 
