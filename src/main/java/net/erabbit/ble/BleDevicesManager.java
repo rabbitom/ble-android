@@ -211,7 +211,7 @@ public class BleDevicesManager implements BLESearchCallback {
     public void addSearchFilter(JSONObject jsonObject) throws JSONException {
 
         deviceObject = parseJson(jsonObject);
-        filterServiceUUIDList.add(deviceObject.advertisement.service);
+        filterServiceUUIDList.add(deviceObject.advertisement.service.replace("-",""));
 
         for (int i = 0; i < deviceObject.services.size(); i++) {
             Service service = deviceObject.services.get(i);
