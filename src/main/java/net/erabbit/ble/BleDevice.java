@@ -102,7 +102,10 @@ public class BleDevice implements DeviceStateCallback {
                 for (int j = 0; j < service.characteristics.size(); j++) {
                     Characteristic characteristic = service.characteristics.get(j);
                     LogUtil.i(TAG, "===characteristic.uuid= " + characteristic.uuid);
-                    uuidToNameMap.put(characteristic.uuid, characteristic.name);
+                    String uuidStr = characteristic.uuid;
+                    if(uuidStr.length() == 4)
+                        uuidStr = BleUtility.UUIDFromShort(uuidStr).toString();
+                    uuidToNameMap.put(uuidStr, characteristic.name);
                 }
             }
         }
