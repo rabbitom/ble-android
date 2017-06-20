@@ -52,8 +52,9 @@ public class BleDevicesManager implements BLESearchCallback {
     private static final String TAG = "ble";
     private static final String FRAGMENT_TAG = "BleDeviceScan";
 
-    private static final int BLE_ADVERTISEMENT_SERVICE_16BIT_UUID = 0x02;//ble协议
-    private static final int BLE_ADVERTISEMENT_SERVICE_UUID = 0x07;//ble协议
+    //BLE广播数据类型，02~07都是服务UUID，参考：https://www.bluetooth.com/specifications/assigned-numbers/generic-access-profile
+    private static final int BLE_ADVERTISEMENT_SERVICE_UUID_BEGIN = 0x02;
+    private static final int BLE_ADVERTISEMENT_SERVICE_UUID_END = 0x07;
 
     HashMap<String, FindDeviceData> findDeviceHashMap = new HashMap<>();
 
@@ -133,10 +134,11 @@ public class BleDevicesManager implements BLESearchCallback {
         //解析广播数据
         Map<Integer, byte[]> scanRecordMap = parseScanRecord(scanRecord);
         byte[] serviceUUIDBytes = null;
-        if (scanRecordMap.containsKey(BLE_ADVERTISEMENT_SERVICE_UUID)) {
-            serviceUUIDBytes = scanRecordMap.get(BLE_ADVERTISEMENT_SERVICE_UUID);
-        } else if (scanRecordMap.containsKey(BLE_ADVERTISEMENT_SERVICE_16BIT_UUID)) {
-            serviceUUIDBytes = scanRecordMap.get(BLE_ADVERTISEMENT_SERVICE_16BIT_UUID);
+        for(int k = BLE_ADVERTISEMENT_SERVICE_UUID_BEGIN; k <= BLE_ADVERTISEMENT_SERVICE_UUID_END; k++) {
+            if (scanRecordMap.containsKey(k)) {
+                serviceUUIDBytes = scanRecordMap.get(k);
+                break;
+            }
         }
 
         //检查设备信息缓存

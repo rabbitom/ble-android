@@ -60,7 +60,7 @@ public class DeviceStateReceiver extends BroadcastReceiver implements DeviceStat
                 onDeviceReady(deviceID);
                 break;
             case DEVICE_MISMATCH:
-                onDeviceReady(deviceID);
+                onDeviceMismatch(deviceID);
                 break;
             case DEVICE_DISCONNECTED:
                 onDeviceDisconnected(deviceID);
