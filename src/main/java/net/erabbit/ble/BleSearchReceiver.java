@@ -23,6 +23,13 @@ public class BleSearchReceiver extends BroadcastReceiver implements BLESearchCal
     public static final String BLE_RSSI_UPDATED = "RSSIUpdated";
     public static final String BLE_SEARCH_ERROR = "SearchError";
 
+    public BleSearchReceiver() {
+    }
+
+    public BleSearchReceiver(Context context) {
+        LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(context);
+        registerReceiver(lbm);
+    }
 
     public void registerReceiver(LocalBroadcastManager lbm) {
 
