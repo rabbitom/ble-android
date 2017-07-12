@@ -485,6 +485,7 @@ public class BleDevicesManager implements BLESearchCallback {
                     //设置设备的广播数据
                     bleDevice.setAdvertisementData(findDeviceHashMap.get(deviceId).scanRecordMap);
                     bleDevices.add(bleDevice);
+                    break;
                 }
             }
         } catch (NoSuchMethodException e) {
