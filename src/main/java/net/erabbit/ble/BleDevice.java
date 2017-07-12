@@ -67,7 +67,7 @@ public class BleDevice implements DeviceStateCallback {
     private String deviceKey;//(只读）系统原生蓝牙设备的ID，字符串类型
     private String deviceName;//设备名称，默认使用广播名或设备名，可以修改
     private boolean connected;//（只读）获取蓝牙连接状态，布尔类型
-    private transient BluetoothDevice nativeDevice;//系统原生的蓝牙设备对象
+    protected transient BluetoothDevice nativeDevice;//系统原生的蓝牙设备对象
     private Map advertisementData;//广播数据，字典类型
 
 
