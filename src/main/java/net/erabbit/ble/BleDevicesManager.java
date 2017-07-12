@@ -55,6 +55,7 @@ public class BleDevicesManager implements BLESearchCallback {
     //BLE广播数据类型，02~07都是服务UUID，参考：https://www.bluetooth.com/specifications/assigned-numbers/generic-access-profile
     private static final int BLE_ADVERTISEMENT_SERVICE_UUID_BEGIN = 0x02;
     private static final int BLE_ADVERTISEMENT_SERVICE_UUID_END = 0x07;
+    public static final int BLE_ADVERTISEMENT_MANUFACTURER_SPECIFIC = 0xFF;
 
     HashMap<String, FindDeviceData> findDeviceHashMap = new HashMap<>();
 
