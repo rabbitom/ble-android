@@ -439,6 +439,9 @@ public class BleDevicesManager implements BLESearchCallback {
         }
     }
 
+    public boolean isSearching() {
+        return isScanning;
+    }
 
     protected Map<Integer, byte[]> parseScanRecord(byte[] scanRecord) {
         Map<Integer, byte[]> scanRecords = new TreeMap<>();
