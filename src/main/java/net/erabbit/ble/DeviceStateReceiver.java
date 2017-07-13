@@ -24,7 +24,13 @@ public class DeviceStateReceiver extends BroadcastReceiver implements DeviceStat
     public static final String DEVICE_ERROR = "DeviceError";
     public static final String DEVICE_RSSI_UPDATED = "DeviceRSSIUpdated";
 
+    public DeviceStateReceiver() {
+    }
 
+    public DeviceStateReceiver(Context context) {
+        LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(context);
+        registerReceiver(lbm);
+    }
 
     public void registerReceiver(LocalBroadcastManager lbm) {
 

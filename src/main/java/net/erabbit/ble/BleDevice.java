@@ -1,5 +1,6 @@
 package net.erabbit.ble;
 
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
@@ -41,7 +42,7 @@ import java.util.UUID;
  * Created by ziv on 2017/4/18.
  */
 
-public class BleDevice implements DeviceStateCallback {
+public class BleDevice implements DeviceStateCallback, Serializable {
 
     public static JSONObject loadJsonAsset(Context context, String filename) {
         JSONObject testjson = null;
@@ -64,22 +65,23 @@ public class BleDevice implements DeviceStateCallback {
 
     private String TAG = "ble ";
 
+    private DeviceObject deviceObject;//JSON文件解析返回的对象
+    private HashMap<String, String> uuidToNameMap = new HashMap<>();
+
     private String deviceKey;//(只读）系统原生蓝牙设备的ID，字符串类型
     private String deviceName;//设备名称，默认使用广播名或设备名，可以修改
-    private boolean connected;//（只读）获取蓝牙连接状态，布尔类型
-    private transient BluetoothDevice nativeDevice;//系统原生的蓝牙设备对象
     private Map advertisementData;//广播数据，字典类型
+    private int deviceRSSI;
 
+    private transient boolean connected;//（只读）获取蓝牙连接状态，布尔类型
 
+    private transient Context context;
+    private transient LocalBroadcastManager lbm;
+
+    private transient BluetoothDevice nativeDevice;//系统原生的蓝牙设备对象
     private transient BluetoothGatt btGatt;
-    protected DeviceObject deviceObject;//JSON文件解析返回的对象
 
-    private LocalBroadcastManager lbm;
-    private Context context;
-
-    private HashMap<String, BluetoothGattCharacteristic> gattCharacteristicMap = new HashMap<>();
-    private HashMap<String, String> uuidToNameMap = new HashMap<>();
-    int deviceRSSI;
+    private transient HashMap<String, BluetoothGattCharacteristic> gattCharacteristicMap = new HashMap<>();
 
     public BleDevice(Context context, BluetoothDevice device, JSONObject jsonObject) {
         this.context = context;
@@ -110,6 +112,17 @@ public class BleDevice implements DeviceStateCallback {
             }
         }
 
+    }
+
+    public void restore(Context context) {
+        this.context = context;
+        BluetoothManager btManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        if((btManager != null) && (deviceKey != null) && BluetoothAdapter.checkBluetoothAddress(deviceKey)) {
+            BluetoothAdapter btAdapter = btManager.getAdapter();
+            this.nativeDevice = btAdapter.getRemoteDevice(deviceKey);
+        }
+        gattCharacteristicMap = new HashMap<>();
+        lbm = LocalBroadcastManager.getInstance(context);
     }
 
     //解析JSON
@@ -299,8 +312,11 @@ public class BleDevice implements DeviceStateCallback {
     /**
      * 读取设备信号强度
      */
-    public int readRSSI() {
+    public void readRSSI() {
+        btGatt.readRemoteRssi();
+    }
 
+    public int getDeviceRSSI() {
         return deviceRSSI;
     }
 
