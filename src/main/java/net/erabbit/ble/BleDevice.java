@@ -456,6 +456,8 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                                              int status) {
                 if (status == BluetoothGatt.GATT_SUCCESS)
                     onCharacteristicUpdated(characteristic);
+                else
+                    LogUtil.e(TAG, "read characteristic failed, status: " + status);
                 executeNextOperation();
             }
 
@@ -464,6 +466,8 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             public void onCharacteristicWrite(BluetoothGatt gatt,
                                               BluetoothGattCharacteristic characteristic,
                                               int status) {
+                if(status != BluetoothGatt.GATT_SUCCESS)
+                    LogUtil.e(TAG, "write characteristic failed, status: " + status);
                 executeNextOperation();
             }
 
@@ -472,6 +476,8 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             public void onDescriptorWrite(BluetoothGatt gatt,
                                           BluetoothGattDescriptor descriptor,
                                           int status) {
+                if(status != BluetoothGatt.GATT_SUCCESS)
+                    LogUtil.e(TAG, "write descriptor failed, status: " + status);
                 executeNextOperation();
             }
 
