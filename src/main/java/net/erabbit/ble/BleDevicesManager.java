@@ -64,7 +64,7 @@ public class BleDevicesManager implements BLESearchCallback {
     private BleDevice curDevice;//在同一时刻只连接一个设备的应用中设置和获取当前设备
     private int timeSearch = 10000;//10秒
     protected BluetoothAdapter mBluetoothAdapter;
-    private ArrayList<BluetoothDevice> devices = new ArrayList<>();//保存所有系统搜索到的设备
+    private final ArrayList<BluetoothDevice> devices = new ArrayList<>();//保存所有系统搜索到的设备
     private ArrayList<BleDevice> bleDevices = new ArrayList<>(); //保存所有创建后的BleDevice
     private DeviceObject deviceObject;//JSON文件解析返回的对象
 
@@ -128,8 +128,10 @@ public class BleDevicesManager implements BLESearchCallback {
         //更新RSSI
         onRSSIUpdated(device.getAddress(), rssi);
 
-        if(!devices.contains(device)){
-            devices.add(device);
+        synchronized (devices) {
+            if (!devices.contains(device)) {
+                devices.add(device);
+            }
         }
 
         //解析广播数据
@@ -395,7 +397,9 @@ public class BleDevicesManager implements BLESearchCallback {
     protected void startScan() {
         //数据初值
         findDeviceHashMap.clear();
-        devices.clear();
+        synchronized (devices) {
+            devices.clear();
+        }
         //开始搜索
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             isScanning = mBluetoothAdapter.startLeScan(mLeScanCallback);
@@ -482,13 +486,15 @@ public class BleDevicesManager implements BLESearchCallback {
         Constructor constructor = null;
         try {
             constructor = clazz.getConstructor(paramDef);
-            for (BluetoothDevice device : devices) {
-                if (device.getAddress().equals(deviceId)) {
-                    bleDevice = (BleDevice) constructor.newInstance(context, device, jsonObject);
-                    //设置设备的广播数据
-                    bleDevice.setAdvertisementData(findDeviceHashMap.get(deviceId).scanRecordMap);
-                    bleDevices.add(bleDevice);
-                    break;
+            synchronized (devices) {
+                for (BluetoothDevice device : devices) {
+                    if (device.getAddress().equals(deviceId)) {
+                        bleDevice = (BleDevice) constructor.newInstance(context, device, jsonObject);
+                        //设置设备的广播数据
+                        bleDevice.setAdvertisementData(findDeviceHashMap.get(deviceId).scanRecordMap);
+                        bleDevices.add(bleDevice);
+                        break;
+                    }
                 }
             }
         } catch (NoSuchMethodException e) {
