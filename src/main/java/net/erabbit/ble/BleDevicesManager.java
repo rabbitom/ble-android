@@ -9,11 +9,14 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.ParcelUuid;
 import android.support.annotation.RequiresApi;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
@@ -38,10 +41,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
+import java.util.UUID;
 
 /**
  * Created by ziv on 2017/4/18.
@@ -180,25 +185,27 @@ public class BleDevicesManager implements BLESearchCallback {
         }
 
         //检查过滤条件
-        if (filterServiceUUIDList.size() != 0) {
-            //需要过滤
-            if (serviceUUIDBytes != null) {
-                String serviceID = BleUtility.bytesToHexStringReversal(serviceUUIDBytes);
-                for (String uuid : filterServiceUUIDList) {
-                    if (serviceID.toString().equals(uuid)) {
-                        //发现设备
-                        LogUtil.i(TAG, String.format("onFoundDevice, name = %s, address = %s", device.getName(), device.getAddress()));
-                        onFoundDevice(device.getAddress(), rssi, scanRecordMap, deviceObject.advertisement.name);
-                        findDeviceData.hasCalledOnFound = true;
-                    }
-                }
-            }
-        } else {
-            //没有过滤条件
+//        if (filterServiceUUIDList.size() != 0) {
+//            //需要过滤
+//            if (serviceUUIDBytes != null) {
+//                String serviceID = BleUtility.bytesToHexStringReversal(serviceUUIDBytes);
+//                for (String uuid : filterServiceUUIDList) {
+//                    if (serviceID.toString().equals(uuid)) {
+//                        //发现设备
+//                        LogUtil.i(TAG, String.format("onFoundDevice, name = %s, address = %s", device.getName(), device.getAddress()));
+//                        onFoundDevice(device.getAddress(), rssi, scanRecordMap, deviceObject.advertisement.name);
+//                        findDeviceData.hasCalledOnFound = true;
+//                    }
+//                }
+//            }
+//        } else {
+//          //没有过滤条件或调用扫描API时已经设置了过滤
+//        String deviceName = device.getName();
+//        if((deviceName != null) && deviceName.toLowerCase().contains("iot")) {
             LogUtil.i(TAG, String.format("onFoundDevice, name = %s, address = %s", device.getName(), device.getAddress()));
             onFoundDevice(device.getAddress(), rssi, scanRecordMap, device.getName());
             findDeviceData.hasCalledOnFound = true;
-        }
+//        }
     }
 
     public ArrayList<BluetoothDevice> getDevices() {
@@ -401,11 +408,40 @@ public class BleDevicesManager implements BLESearchCallback {
             devices.clear();
         }
         //开始搜索
+        UUID mainServiceUUID = null;
+        if(deviceObject != null) {
+            String UUIDString = deviceObject.advertisement.service;
+            if(UUIDString != null)
+                try {
+                    if (UUIDString.length() == 4)
+                        mainServiceUUID = BleUtility.UUIDFromShort(UUIDString);
+                    else {
+                        if (UUIDString.length() == 32)
+                            UUIDString = UUIDString.substring(0, 8) + "-" +
+                                    UUIDString.substring(8, 4) + "-" +
+                                    UUIDString.substring(12, 4) + "-" +
+                                    UUIDString.substring(16, 4) + "-" +
+                                    UUIDString.substring(20);
+                        mainServiceUUID = UUID.fromString(UUIDString);
+                    }
+                } catch (IllegalArgumentException e) {
+                    LogUtil.i(TAG, "can't make uuid from service uuid string: " + e.getMessage());
+                }
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            isScanning = mBluetoothAdapter.startLeScan(mLeScanCallback);
+            if (mainServiceUUID != null)
+                isScanning = mBluetoothAdapter.startLeScan(new UUID[]{mainServiceUUID}, mLeScanCallback);
+            else
+                isScanning = mBluetoothAdapter.startLeScan(mLeScanCallback);
         } else {
             if (mBluetoothLeScanner == null) {
                 mBluetoothLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
+            }
+            if(mainServiceUUID != null) {
+                ScanFilter filter = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(mainServiceUUID)).build();
+                ArrayList<ScanFilter> filters = new ArrayList<>();
+                filters.add(filter);
+                mBluetoothLeScanner.startScan(filters, new ScanSettings.Builder().build(), mScanCallback);
             }
             mBluetoothLeScanner.startScan(mScanCallback);
             isScanning = true;
