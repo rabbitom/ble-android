@@ -86,6 +86,16 @@ public class BleDevicesManager implements BLESearchCallback {
     private BluetoothLeScanner mBluetoothLeScanner;
     private ScanCallback mScanCallback;
 
+    private boolean scanFilterByServiceUUID = true;
+
+    public boolean isScanFilterByServiceUUID() {
+        return scanFilterByServiceUUID;
+    }
+
+    public void setScanFilterByServiceUUID(boolean scanFilterByServiceUUID) {
+        this.scanFilterByServiceUUID = scanFilterByServiceUUID;
+    }
+
     public static BleDevicesManager getInstance(Context context) {
 
         if (bleDevicesManager == null) {
@@ -200,12 +210,21 @@ public class BleDevicesManager implements BLESearchCallback {
 //            }
 //        } else {
 //          //没有过滤条件或调用扫描API时已经设置了过滤
-//        String deviceName = device.getName();
-//        if((deviceName != null) && deviceName.toLowerCase().contains("iot")) {
+        boolean willCallOnFound = true;
+        if(deviceObject != null) {
+            String nameFilterPattern = deviceObject.advertisement.nameFilterPattern;
+            if (nameFilterPattern != null) {
+                String deviceName = device.getName();
+                if (deviceName == null)
+                    deviceName = "";
+                willCallOnFound = deviceName.matches(nameFilterPattern);
+            }
+        }
+        if(willCallOnFound) {
             LogUtil.i(TAG, String.format("onFoundDevice, name = %s, address = %s", device.getName(), device.getAddress()));
             onFoundDevice(device.getAddress(), rssi, scanRecordMap, device.getName());
             findDeviceData.hasCalledOnFound = true;
-//        }
+        }
     }
 
     public ArrayList<BluetoothDevice> getDevices() {
@@ -409,7 +428,7 @@ public class BleDevicesManager implements BLESearchCallback {
         }
         //开始搜索
         UUID mainServiceUUID = null;
-        if(deviceObject != null) {
+        if((deviceObject != null) && scanFilterByServiceUUID) {
             String UUIDString = deviceObject.advertisement.service;
             if(UUIDString != null)
                 try {
