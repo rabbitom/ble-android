@@ -73,8 +73,6 @@ public class BleDevice implements DeviceStateCallback, Serializable {
     private Map advertisementData;//广播数据，字典类型
     private int deviceRSSI;
 
-    private transient boolean connected;//（只读）获取蓝牙连接状态，布尔类型
-
     private transient Context context;
     private transient LocalBroadcastManager lbm;
 
@@ -192,7 +190,6 @@ public class BleDevice implements DeviceStateCallback, Serializable {
     public boolean getConnected() {
         BluetoothManager btManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         int connectionState = btManager.getConnectionState(nativeDevice, BluetoothProfile.GATT);
-        LogUtil.i(TAG, "connection state: " + BleUtility.getConnectionState(connectionState));
         return (connectionState == BluetoothGatt.STATE_CONNECTED);
     }
 
@@ -232,8 +229,6 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             btGatt.disconnect();
             btGatt.close();
             btGatt = null;
-            connected = false;
-            onDeviceDisconnected(deviceKey);
         }
     }
 
@@ -356,25 +351,20 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             //连接状态改变
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-
-                //if (status == BluetoothGatt.GATT_SUCCESS) {
+                LogUtil.i(TAG, "connection state: " + BleUtility.getConnectionState(newState));
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    connected = true;
                     onDeviceConnected(deviceKey);
-                    LogUtil.i(TAG, "connected to device success");
                     //refreshDeviceCache(gatt);
                     if (gattOperationQueue != null)
                         gattOperationQueue.clear();
-                    LogUtil.i(TAG, "gatt.getServices().size()=" + gatt.getServices().size());
-                    if (gatt.getServices().size() == 0) {
+                    int serviceCount = gatt.getServices().size();
+                    if (serviceCount == 0)
                         gatt.discoverServices();
-                    } else {
+                    else {
                         LogUtil.i(TAG, "device already has services, skip discover");
                         onServicesDiscovered(gatt, BluetoothGatt.GATT_SUCCESS);
                     }
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    LogUtil.i("ble", "device disconnected");
-                    connected = false;
                     onDeviceDisconnected(deviceKey);
                 }
             }
