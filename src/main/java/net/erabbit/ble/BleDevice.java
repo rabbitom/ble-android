@@ -190,7 +190,10 @@ public class BleDevice implements DeviceStateCallback, Serializable {
     }
 
     public boolean getConnected() {
-        return connected;
+        BluetoothManager btManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        int connectionState = btManager.getConnectionState(nativeDevice, BluetoothProfile.GATT);
+        LogUtil.i(TAG, "connection state: " + BleUtility.getConnectionState(connectionState));
+        return (connectionState == BluetoothGatt.STATE_CONNECTED);
     }
 
     public DeviceObject getDeviceObject() {
