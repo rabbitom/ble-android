@@ -105,7 +105,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                     String uuidStr = characteristic.uuid;
                     if(uuidStr.length() == 4)
                         uuidStr = BleUtility.UUIDFromShort(uuidStr).toString();
-                    uuidToNameMap.put(uuidStr, characteristic.name);
+                    uuidToNameMap.put(uuidStr.toLowerCase(), characteristic.name);
                 }
             }
         }
@@ -391,10 +391,11 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                     //保存所有服务的特征
                     LogUtil.i(TAG, "====uuidToNameMap=" + uuidToNameMap.toString());
                     for (BluetoothGattService service : services) {
+                        Log.i(TAG, "discovered service_uuid = " + service.getUuid());
                         List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
                         for (BluetoothGattCharacteristic characteristic : characteristics) {
                             UUID cUuid = characteristic.getUuid();
-                            Log.i(TAG, "characteristic_uuid = " + characteristic.getUuid());
+                            Log.i(TAG, "discovered characteristic_uuid = " + characteristic.getUuid());
                             deviceCharactUuidList.add(cUuid.toString());
                             String cName = uuidToNameMap.get(cUuid.toString());
                             if (cName != null) {
