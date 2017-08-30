@@ -1,5 +1,6 @@
 package net.erabbit.ble.utils;
 
+import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
@@ -135,6 +136,19 @@ public class BleUtility {
         return getHashMapValue(descPermissions, property);
     }
 
+    //--------------------------------------------------------------------------
+    private static HashMap<Integer, String> connStatus = new HashMap();
+
+    static {
+        connStatus.put(BluetoothGatt.STATE_CONNECTED, "CONNECTED");
+        connStatus.put(BluetoothGatt.STATE_CONNECTING, "CONNECTING");
+        connStatus.put(BluetoothGatt.STATE_DISCONNECTED, "DISCONNECTED");
+        connStatus.put(BluetoothGatt.STATE_DISCONNECTING, "DISCONNECTING");
+    }
+
+    public static String getConnectionState(int state) {
+        return getHashMapValue(connStatus, state);
+    }
 
     private static String getHashMapValue(HashMap<Integer, String> hashMap, int number) {
         String result = hashMap.get(number);

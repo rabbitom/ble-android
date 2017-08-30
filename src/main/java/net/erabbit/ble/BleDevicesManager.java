@@ -9,11 +9,14 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.ParcelUuid;
 import android.support.annotation.RequiresApi;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
@@ -38,10 +41,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
+import java.util.UUID;
 
 /**
  * Created by ziv on 2017/4/18.
@@ -64,7 +69,7 @@ public class BleDevicesManager implements BLESearchCallback {
     private BleDevice curDevice;//在同一时刻只连接一个设备的应用中设置和获取当前设备
     private int timeSearch = 10000;//10秒
     protected BluetoothAdapter mBluetoothAdapter;
-    private ArrayList<BluetoothDevice> devices = new ArrayList<>();//保存所有系统搜索到的设备
+    private final ArrayList<BluetoothDevice> devices = new ArrayList<>();//保存所有系统搜索到的设备
     private ArrayList<BleDevice> bleDevices = new ArrayList<>(); //保存所有创建后的BleDevice
     private DeviceObject deviceObject;//JSON文件解析返回的对象
 
@@ -80,6 +85,16 @@ public class BleDevicesManager implements BLESearchCallback {
     private BluetoothAdapter.LeScanCallback mLeScanCallback;
     private BluetoothLeScanner mBluetoothLeScanner;
     private ScanCallback mScanCallback;
+
+    private boolean scanFilterByServiceUUID = true;
+
+    public boolean isScanFilterByServiceUUID() {
+        return scanFilterByServiceUUID;
+    }
+
+    public void setScanFilterByServiceUUID(boolean scanFilterByServiceUUID) {
+        this.scanFilterByServiceUUID = scanFilterByServiceUUID;
+    }
 
     public static BleDevicesManager getInstance(Context context) {
 
@@ -128,8 +143,10 @@ public class BleDevicesManager implements BLESearchCallback {
         //更新RSSI
         onRSSIUpdated(device.getAddress(), rssi);
 
-        if(!devices.contains(device)){
-            devices.add(device);
+        synchronized (devices) {
+            if (!devices.contains(device)) {
+                devices.add(device);
+            }
         }
 
         //解析广播数据
@@ -178,21 +195,32 @@ public class BleDevicesManager implements BLESearchCallback {
         }
 
         //检查过滤条件
-        if (filterServiceUUIDList.size() != 0) {
-            //需要过滤
-            if (serviceUUIDBytes != null) {
-                String serviceID = BleUtility.bytesToHexStringReversal(serviceUUIDBytes);
-                for (String uuid : filterServiceUUIDList) {
-                    if (serviceID.toString().equals(uuid)) {
-                        //发现设备
-                        LogUtil.i(TAG, String.format("onFoundDevice, name = %s, address = %s", device.getName(), device.getAddress()));
-                        onFoundDevice(device.getAddress(), rssi, scanRecordMap, deviceObject.advertisement.name);
-                        findDeviceData.hasCalledOnFound = true;
-                    }
-                }
+//        if (filterServiceUUIDList.size() != 0) {
+//            //需要过滤
+//            if (serviceUUIDBytes != null) {
+//                String serviceID = BleUtility.bytesToHexStringReversal(serviceUUIDBytes);
+//                for (String uuid : filterServiceUUIDList) {
+//                    if (serviceID.toString().equals(uuid)) {
+//                        //发现设备
+//                        LogUtil.i(TAG, String.format("onFoundDevice, name = %s, address = %s", device.getName(), device.getAddress()));
+//                        onFoundDevice(device.getAddress(), rssi, scanRecordMap, deviceObject.advertisement.name);
+//                        findDeviceData.hasCalledOnFound = true;
+//                    }
+//                }
+//            }
+//        } else {
+//          //没有过滤条件或调用扫描API时已经设置了过滤
+        boolean willCallOnFound = true;
+        if(deviceObject != null) {
+            String nameFilterPattern = deviceObject.advertisement.nameFilterPattern;
+            if (nameFilterPattern != null) {
+                String deviceName = device.getName();
+                if (deviceName == null)
+                    deviceName = "";
+                willCallOnFound = deviceName.matches(nameFilterPattern);
             }
-        } else {
-            //没有过滤条件
+        }
+        if(willCallOnFound) {
             LogUtil.i(TAG, String.format("onFoundDevice, name = %s, address = %s", device.getName(), device.getAddress()));
             onFoundDevice(device.getAddress(), rssi, scanRecordMap, device.getName());
             findDeviceData.hasCalledOnFound = true;
@@ -395,13 +423,44 @@ public class BleDevicesManager implements BLESearchCallback {
     protected void startScan() {
         //数据初值
         findDeviceHashMap.clear();
-        devices.clear();
+        synchronized (devices) {
+            devices.clear();
+        }
         //开始搜索
+        UUID mainServiceUUID = null;
+        if((deviceObject != null) && scanFilterByServiceUUID) {
+            String UUIDString = deviceObject.advertisement.service;
+            if(UUIDString != null)
+                try {
+                    if (UUIDString.length() == 4)
+                        mainServiceUUID = BleUtility.UUIDFromShort(UUIDString);
+                    else {
+                        if (UUIDString.length() == 32)
+                            UUIDString = UUIDString.substring(0, 8) + "-" +
+                                    UUIDString.substring(8, 4) + "-" +
+                                    UUIDString.substring(12, 4) + "-" +
+                                    UUIDString.substring(16, 4) + "-" +
+                                    UUIDString.substring(20);
+                        mainServiceUUID = UUID.fromString(UUIDString);
+                    }
+                } catch (IllegalArgumentException e) {
+                    LogUtil.i(TAG, "can't make uuid from service uuid string: " + e.getMessage());
+                }
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            isScanning = mBluetoothAdapter.startLeScan(mLeScanCallback);
+            if (mainServiceUUID != null)
+                isScanning = mBluetoothAdapter.startLeScan(new UUID[]{mainServiceUUID}, mLeScanCallback);
+            else
+                isScanning = mBluetoothAdapter.startLeScan(mLeScanCallback);
         } else {
             if (mBluetoothLeScanner == null) {
                 mBluetoothLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
+            }
+            if(mainServiceUUID != null) {
+                ScanFilter filter = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(mainServiceUUID)).build();
+                ArrayList<ScanFilter> filters = new ArrayList<>();
+                filters.add(filter);
+                mBluetoothLeScanner.startScan(filters, new ScanSettings.Builder().build(), mScanCallback);
             }
             mBluetoothLeScanner.startScan(mScanCallback);
             isScanning = true;
@@ -482,13 +541,15 @@ public class BleDevicesManager implements BLESearchCallback {
         Constructor constructor = null;
         try {
             constructor = clazz.getConstructor(paramDef);
-            for (BluetoothDevice device : devices) {
-                if (device.getAddress().equals(deviceId)) {
-                    bleDevice = (BleDevice) constructor.newInstance(context, device, jsonObject);
-                    //设置设备的广播数据
-                    bleDevice.setAdvertisementData(findDeviceHashMap.get(deviceId).scanRecordMap);
-                    bleDevices.add(bleDevice);
-                    break;
+            synchronized (devices) {
+                for (BluetoothDevice device : devices) {
+                    if (device.getAddress().equals(deviceId)) {
+                        bleDevice = (BleDevice) constructor.newInstance(context, device, jsonObject);
+                        //设置设备的广播数据
+                        bleDevice.setAdvertisementData(findDeviceHashMap.get(deviceId).scanRecordMap);
+                        bleDevices.add(bleDevice);
+                        break;
+                    }
                 }
             }
         } catch (NoSuchMethodException e) {

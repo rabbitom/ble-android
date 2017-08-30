@@ -73,8 +73,6 @@ public class BleDevice implements DeviceStateCallback, Serializable {
     private Map advertisementData;//广播数据，字典类型
     private int deviceRSSI;
 
-    private transient boolean connected;//（只读）获取蓝牙连接状态，布尔类型
-
     private transient Context context;
     private transient LocalBroadcastManager lbm;
 
@@ -107,7 +105,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                     String uuidStr = characteristic.uuid;
                     if(uuidStr.length() == 4)
                         uuidStr = BleUtility.UUIDFromShort(uuidStr).toString();
-                    uuidToNameMap.put(uuidStr, characteristic.name);
+                    uuidToNameMap.put(uuidStr.toLowerCase(), characteristic.name);
                 }
             }
         }
@@ -190,7 +188,9 @@ public class BleDevice implements DeviceStateCallback, Serializable {
     }
 
     public boolean getConnected() {
-        return connected;
+        BluetoothManager btManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        int connectionState = btManager.getConnectionState(nativeDevice, BluetoothProfile.GATT);
+        return (connectionState == BluetoothGatt.STATE_CONNECTED);
     }
 
     public DeviceObject getDeviceObject() {
@@ -229,8 +229,6 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             btGatt.disconnect();
             btGatt.close();
             btGatt = null;
-            connected = false;
-            onDeviceDisconnected(deviceKey);
         }
     }
 
@@ -353,25 +351,20 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             //连接状态改变
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-
-                //if (status == BluetoothGatt.GATT_SUCCESS) {
+                LogUtil.i(TAG, "connection state: " + BleUtility.getConnectionState(newState));
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    connected = true;
                     onDeviceConnected(deviceKey);
-                    LogUtil.i(TAG, "connected to device success");
                     //refreshDeviceCache(gatt);
                     if (gattOperationQueue != null)
                         gattOperationQueue.clear();
-                    LogUtil.i(TAG, "gatt.getServices().size()=" + gatt.getServices().size());
-                    if (gatt.getServices().size() == 0) {
+                    int serviceCount = gatt.getServices().size();
+                    if (serviceCount == 0)
                         gatt.discoverServices();
-                    } else {
+                    else {
                         LogUtil.i(TAG, "device already has services, skip discover");
                         onServicesDiscovered(gatt, BluetoothGatt.GATT_SUCCESS);
                     }
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    LogUtil.i("ble", "device disconnected");
-                    connected = false;
                     onDeviceDisconnected(deviceKey);
                 }
             }
@@ -398,10 +391,11 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                     //保存所有服务的特征
                     LogUtil.i(TAG, "====uuidToNameMap=" + uuidToNameMap.toString());
                     for (BluetoothGattService service : services) {
+                        Log.i(TAG, "discovered service_uuid = " + service.getUuid());
                         List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
                         for (BluetoothGattCharacteristic characteristic : characteristics) {
                             UUID cUuid = characteristic.getUuid();
-                            Log.i(TAG, "characteristic_uuid = " + characteristic.getUuid());
+                            Log.i(TAG, "discovered characteristic_uuid = " + characteristic.getUuid());
                             deviceCharactUuidList.add(cUuid.toString());
                             String cName = uuidToNameMap.get(cUuid.toString());
                             if (cName != null) {
@@ -456,6 +450,8 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                                              int status) {
                 if (status == BluetoothGatt.GATT_SUCCESS)
                     onCharacteristicUpdated(characteristic);
+                else
+                    LogUtil.e(TAG, "read characteristic failed, status: " + status);
                 executeNextOperation();
             }
 
@@ -464,6 +460,8 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             public void onCharacteristicWrite(BluetoothGatt gatt,
                                               BluetoothGattCharacteristic characteristic,
                                               int status) {
+                if(status != BluetoothGatt.GATT_SUCCESS)
+                    LogUtil.e(TAG, "write characteristic failed, status: " + status);
                 executeNextOperation();
             }
 
@@ -472,6 +470,8 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             public void onDescriptorWrite(BluetoothGatt gatt,
                                           BluetoothGattDescriptor descriptor,
                                           int status) {
+                if(status != BluetoothGatt.GATT_SUCCESS)
+                    LogUtil.e(TAG, "write descriptor failed, status: " + status);
                 executeNextOperation();
             }
 
