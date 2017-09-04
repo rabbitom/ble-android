@@ -58,10 +58,12 @@ public class ScanFragment extends Fragment {
                         requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
                     } else {
                         //开始扫描
-                        bluetoothStateCallback.onBluetoothEnabled();
+                        if (bluetoothStateCallback != null)
+                            bluetoothStateCallback.onBluetoothEnabled();
                     }
                 } else {
-                    bluetoothStateCallback.onBluetoothEnabled();
+                    if (bluetoothStateCallback != null)
+                        bluetoothStateCallback.onBluetoothEnabled();
                 }
             }
         }
