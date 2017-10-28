@@ -408,13 +408,13 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                     //验证json文档与设备 服务和特性是否匹配
                     for (int i = 0; i < deviceObject.services.size(); i++) {
                         Service service = deviceObject.services.get(i);
-                        if (!deviceServUuidList.contains(service.uuid)) {
+                        if (!deviceServUuidList.contains(service.uuid.toLowerCase())) {
                             isMatch = false;
                             break;
                         }
                         for (int j = 0; j < service.characteristics.size(); j++) {
                             Characteristic characteristic = service.characteristics.get(j);
-                            if (!deviceCharactUuidList.contains(characteristic.uuid)) {
+                            if (!deviceCharactUuidList.contains(characteristic.uuid.toLowerCase())) {
                                 isMatch = false;
                                 break;
                             }

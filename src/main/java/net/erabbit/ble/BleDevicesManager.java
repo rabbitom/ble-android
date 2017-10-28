@@ -243,7 +243,7 @@ public class BleDevicesManager implements BLESearchCallback {
 
         deviceObject = parseJson(jsonObject);
         filterServiceUUIDList.add(deviceObject.advertisement.service.replace("-",""));
-
+        Log.i(TAG,"FilterUUID="+deviceObject.advertisement.service.replace("-",""));
         for (int i = 0; i < deviceObject.services.size(); i++) {
             Service service = deviceObject.services.get(i);
             for (int j = 0; j < service.characteristics.size(); j++) {
