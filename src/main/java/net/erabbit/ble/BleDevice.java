@@ -73,7 +73,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
     private Map advertisementData;//广播数据，字典类型
     private int deviceRSSI;
 
-    private transient Context context;
+    protected transient Context context;//子类中可能需要使用
     private transient LocalBroadcastManager lbm;
 
     private transient BluetoothDevice nativeDevice;//系统原生的蓝牙设备对象
