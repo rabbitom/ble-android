@@ -493,7 +493,9 @@ public class BleDevicesManager implements BLESearchCallback {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
                 mBluetoothAdapter.stopLeScan(mLeScanCallback);
             } else {
-                mBluetoothLeScanner.stopScan(mScanCallback);
+                //如果停止搜索时蓝牙已经关掉会导致崩溃
+                if(mBluetoothAdapter.isEnabled())
+                    mBluetoothLeScanner.stopScan(mScanCallback);
             }
         }
     }
