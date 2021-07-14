@@ -24,6 +24,26 @@ public class BLESensor extends BleDevice {
         return features.get(index);
     }
 
+    public BLESensorFeature getFeatureWithName(String name) {
+        for(BLESensorFeature feature : features) {
+            if (name.equals(feature.getName()))
+                return feature;
+        }
+        return null;
+    }
+
+    public int getFeatureIndex(BLESensorFeature feature) {
+        return features.indexOf(feature);
+    }
+
+    public void switchSensorFeature(BLESensorFeature sensorFeature, boolean onOff) {
+        if(onOff)
+            startReceiveData(sensorFeature.getName());
+        else
+            stopReceiveData(sensorFeature.getName());
+        sensorFeature.setEnabled(onOff);
+    }
+
     public BLESensor(Context context, BluetoothDevice device, JSONObject jsonObject) {
         super(context, device, jsonObject);
         features = new ArrayList<>();
@@ -43,6 +63,15 @@ public class BLESensor extends BleDevice {
         }
         catch(JSONException jsonException) {
             LogUtil.e("sensor", jsonException.getMessage());
+        }
+    }
+
+    @Override
+    public void onDeviceReceivedData(String deviceID, String name, byte[] data) {
+        BLESensorFeature feature = getFeatureWithName(name);
+        if(feature != null) {
+            if(feature.parseData(data))
+                onDeviceValueChanged(deviceID, 0, features.indexOf(feature));
         }
     }
 }
