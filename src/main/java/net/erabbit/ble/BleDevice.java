@@ -124,7 +124,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
     }
 
     //解析JSON
-    private DeviceObject parseJson(JSONObject jsonObject) throws JSONException {
+    public static DeviceObject parseJson(JSONObject jsonObject) throws JSONException {
 
         DeviceObject deviceObject = new DeviceObject();
         String version = jsonObject.getString("version");
@@ -134,10 +134,8 @@ public class BleDevice implements DeviceStateCallback, Serializable {
         JSONObject object = jsonObject.getJSONObject("advertisement");
         String name = object.getString("name");
         String service = object.getString("service");
-        String nameFilterPattern = object.getString("nameFilterPattern");
         advertisement.name = name;
         advertisement.service = service;
-        advertisement.nameFilterPattern = nameFilterPattern;
         deviceObject.advertisement = advertisement;
 
         ArrayList<Service> services = new ArrayList<Service>();

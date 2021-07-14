@@ -194,37 +194,9 @@ public class BleDevicesManager implements BLESearchCallback {
             findDeviceHashMap.put(device.getAddress(), findDeviceData);
         }
 
-        //检查过滤条件
-//        if (filterServiceUUIDList.size() != 0) {
-//            //需要过滤
-//            if (serviceUUIDBytes != null) {
-//                String serviceID = BleUtility.bytesToHexStringReversal(serviceUUIDBytes);
-//                for (String uuid : filterServiceUUIDList) {
-//                    if (serviceID.toString().equals(uuid)) {
-//                        //发现设备
-//                        LogUtil.i(TAG, String.format("onFoundDevice, name = %s, address = %s", device.getName(), device.getAddress()));
-//                        onFoundDevice(device.getAddress(), rssi, scanRecordMap, deviceObject.advertisement.name);
-//                        findDeviceData.hasCalledOnFound = true;
-//                    }
-//                }
-//            }
-//        } else {
-//          //没有过滤条件或调用扫描API时已经设置了过滤
-        boolean willCallOnFound = true;
-        if(deviceObject != null) {
-            String nameFilterPattern = deviceObject.advertisement.nameFilterPattern;
-            if (nameFilterPattern != null) {
-                String deviceName = device.getName();
-                if (deviceName == null)
-                    deviceName = "";
-                willCallOnFound = deviceName.matches(nameFilterPattern);
-            }
-        }
-        if(willCallOnFound) {
-            LogUtil.i(TAG, String.format("onFoundDevice, name = %s, address = %s", device.getName(), device.getAddress()));
-            onFoundDevice(device.getAddress(), rssi, scanRecordMap, device.getName());
-            findDeviceData.hasCalledOnFound = true;
-        }
+        LogUtil.i(TAG, String.format("onFoundDevice, name = %s, address = %s", device.getName(), device.getAddress()));
+        onFoundDevice(device.getAddress(), rssi, scanRecordMap, device.getName());
+        findDeviceData.hasCalledOnFound = true;
     }
 
     public ArrayList<BluetoothDevice> getDevices() {
@@ -241,7 +213,7 @@ public class BleDevicesManager implements BLESearchCallback {
 
     public void addSearchFilter(JSONObject jsonObject) throws JSONException {
 
-        deviceObject = parseJson(jsonObject);
+        deviceObject = BleDevice.parseJson(jsonObject);
         filterServiceUUIDList.add(deviceObject.advertisement.service.replace("-",""));
         Log.i(TAG,"FilterUUID="+deviceObject.advertisement.service.replace("-",""));
         for (int i = 0; i < deviceObject.services.size(); i++) {
@@ -252,58 +224,6 @@ public class BleDevicesManager implements BLESearchCallback {
             }
         }
     }
-
-
-    //解析JSON
-    private DeviceObject parseJson(JSONObject jsonObject) throws JSONException {
-
-        DeviceObject deviceObject = new DeviceObject();
-        String version = jsonObject.getString("version");
-        deviceObject.version = version;
-
-        Advertisement advertisement = new Advertisement();
-        JSONObject object = jsonObject.getJSONObject("advertisement");
-        String name = object.getString("name");
-        String service = object.getString("service");
-        String nameFilterPattern = object.getString("nameFilterPattern");
-        advertisement.name = name;
-        advertisement.service = service;
-        advertisement.nameFilterPattern = nameFilterPattern;
-        deviceObject.advertisement = advertisement;
-
-        ArrayList<Service> services = new ArrayList<Service>();
-        JSONArray jsonArray = jsonObject.getJSONArray("services");
-        for (int i = 0; i < jsonArray.length(); i++) {
-            Service serv = new Service();
-            JSONObject servObject = jsonArray.getJSONObject(i);
-            String sUuid = servObject.getString("uuid");
-            String sName = servObject.getString("name");
-            ArrayList<Characteristic> characteristics = new ArrayList<>();
-            JSONArray charactJsonArray = servObject.getJSONArray("characteristics");
-            for (int j = 0; j < charactJsonArray.length(); j++) {
-                Characteristic characteristic = new Characteristic();
-                JSONObject cObject = charactJsonArray.getJSONObject(j);
-                String cUuid = cObject.getString("uuid");
-                String cName = cObject.getString("name");
-                ArrayList<String> properties = new ArrayList<>();
-                JSONArray propertyArray = cObject.getJSONArray("properties");
-                for (int k = 0; k < propertyArray.length(); k++) {
-                    String property = propertyArray.getString(k);
-                    properties.add(property);
-                }
-                characteristic.name = cName;
-                characteristic.uuid = cUuid;
-                characteristic.properties = properties;
-            }
-            serv.name = sName;
-            serv.uuid = sUuid;
-            serv.characteristics = characteristics;
-            services.add(serv);
-        }
-        deviceObject.services = services;
-        return deviceObject;
-    }
-
 
     /**
      * 设置搜索设备的超时时间，到时间后自动停止
