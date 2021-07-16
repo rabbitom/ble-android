@@ -43,6 +43,18 @@ public class BLESensorFeature {
         catch(JSONException jsonException) {
             LogUtil.e("feature", jsonException.getMessage());
         }
+
+        try {
+            JSONArray conversionsArray = jsonObject.getJSONArray("conversions");
+            conversions = new Conversion[conversionsArray.length()];
+            for(int i=0; i<conversionsArray.length(); i++) {
+                JSONObject conversionObject = conversionsArray.getJSONObject(i);
+                conversions[i] = new Conversion(conversionObject);
+            }
+        }
+        catch(JSONException jsonException) {
+            LogUtil.e("feature", jsonException.getMessage());
+        }
     }
 
     private boolean enabled = false;
@@ -89,14 +101,51 @@ public class BLESensorFeature {
 
     private CSLField fields[];
 
+    private class Conversion {
+
+        private String operator;
+        private String format;
+        private byte[] value;
+
+        public Conversion(JSONObject jsonObject) {
+            try {
+                operator = jsonObject.getString("operator");
+                format = jsonObject.getString("format");
+                JSONArray valueArray = jsonObject.getJSONArray("value");
+                value = new byte[valueArray.length()];
+                for(int i=0; i<valueArray.length(); i++)
+                    value[i] = (byte)valueArray.getInt(i);
+            }
+            catch(JSONException jsonException) {
+                LogUtil.e("conversion", jsonException.getMessage());
+            }
+        }
+
+        public Number convert(Number src) {
+            if(!"divide".equals(operator)) {
+                LogUtil.e("conversion", "not supported: " + operator);
+                return src;
+            }
+            Number divideBy = CSLField.parseArray(value, format);
+            return src.floatValue() / divideBy.floatValue();
+        }
+    }
+
+    private Conversion[] conversions;
+
     public boolean parseData(byte[] data) {
         if(fields == null)
             return false;
         int v = 0, offset = 0;
         for (CSLField field : fields) {
-            Object value = field.parseValue(data, offset);
-            if (value != null)
+            Number value = field.parseValue(data, offset);
+            if (value != null) {
+                if(conversions != null) {
+                    for(Conversion conversion : conversions)
+                        value = conversion.convert(value);
+                }
                 values[v++] = value;
+            }
             offset += field.getByteLength();
         }
         return v > 0;

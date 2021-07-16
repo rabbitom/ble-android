@@ -4,6 +4,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class CSLField {
 
@@ -26,7 +27,16 @@ public class CSLField {
         }
     }
 
-    public Object parseValue(byte[] data, int offset) {
+    private CSLField(String format) {
+        this.format = format;
+    }
+
+    public static Number parseArray(byte[] data, String format) {
+        CSLField csl = new CSLField(format);
+        return csl.parseValue(data, 0);
+    }
+
+    public Number parseValue(byte[] data, int offset) {
         switch(format) {
             case "UInt8":
                 return parseUInt8(data, offset);
@@ -42,6 +52,10 @@ public class CSLField {
                 return parseInt32LE(data, offset);
             case "Float32":
                 return parseFloat32(data, offset);
+            case "T16":
+                return parseT16(data, offset);
+            case "P40":
+                return parseP40(data, offset);
             default:
                 LogUtil.e("csl", "format not supported: " + format);
                 return null;
@@ -104,6 +118,28 @@ public class CSLField {
     private float parseFloat32(byte[] data, int offset) {
         ByteBuffer bb = ByteBuffer.allocate(4);
         bb.put(data, offset, 4);
+        bb = bb.order(ByteOrder.LITTLE_ENDIAN);
         return bb.getFloat(0);
+    }
+
+    //temperature
+    private float parseT16(byte[] data, int offset) {
+        byte digit = data[offset];
+        int remainder = byteToUInt(data[offset+1]);
+        return (float)digit + (float)remainder / 100;
+    }
+
+    //pressure
+    private double parseP40(byte[] data, int offset) {
+        double result = (double)parseUInt32LE(data, offset);
+        double decimalVal = (double)byteToUInt(data[offset+4]);
+        if (decimalVal < 10) {
+            result += decimalVal / 10;
+        } else if (decimalVal < 100) {
+            result += decimalVal / 100;
+        } else {
+            result += decimalVal / 1000;
+        }
+        return result;
     }
 }
