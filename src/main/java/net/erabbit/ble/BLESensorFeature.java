@@ -87,14 +87,14 @@ public class BLESensorFeature {
         return values;
     }
 
-    public String getValueString() {
+    public String getValueString(boolean withUnit) {
         if(values == null)
             return "";
         StringBuilder result = new StringBuilder();
         for (Object value : values) {
             result.append((result.length() == 0) ? "" : ",").append(String.format("%s", value));
         }
-        if(unit != null)
+        if(withUnit && unit != null)
             result.append(" ").append(unit);
         return result.toString();
     }
