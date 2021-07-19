@@ -9,6 +9,11 @@ import java.nio.ByteOrder;
 public class CSLField {
 
     private String name;
+
+    public String getName() {
+        return name;
+    }
+
     private String format;
     private int byteLength;
 

@@ -101,6 +101,15 @@ public class BLESensorFeature {
 
     private CSLField fields[];
 
+    public String getKeys() {
+        if(this.fields == null)
+            return null;
+        StringBuilder result = new StringBuilder();
+        for(CSLField field : this.fields)
+            result.append((result.length() == 0) ? "" : ",").append(field.getName());
+        return result.toString();
+    }
+
     private class Conversion {
 
         private String operator;
