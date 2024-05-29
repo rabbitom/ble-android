@@ -4,8 +4,15 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
+import android.content.Context;
+import android.os.Build;
 import android.text.TextUtils;
+import android.util.Log;
 
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,7 +22,7 @@ import java.util.UUID;
  * Created by ziv on 2017/4/18.
  */
 
-public class BleUtility {
+public class BLEUtility {
 
 
     public static UUID UUIDFromShort(String shortStr) {
@@ -319,8 +326,8 @@ public class BleUtility {
 
     public static UUID toUUIDBE(byte[] bytes, int offset) {
         if (offset + 16 <= bytes.length) {
-            long higherHalf = BleUtility.toLongBE(bytes, offset, 8);
-            long lowerHalf = BleUtility.toLongBE(bytes, offset + 8, 8);
+            long higherHalf = BLEUtility.toLongBE(bytes, offset, 8);
+            long lowerHalf = BLEUtility.toLongBE(bytes, offset + 8, 8);
             return new UUID(higherHalf, lowerHalf);
         }
         return null;
@@ -332,8 +339,8 @@ public class BleUtility {
 
     public static UUID toUUIDLE(byte[] bytes, int offset) {
         if (offset + 16 <= bytes.length) {
-            long lowerHalf = BleUtility.toLongLE(bytes, offset, 8);
-            long higherHalf = BleUtility.toLongLE(bytes, offset + 8, 8);
+            long lowerHalf = BLEUtility.toLongLE(bytes, offset, 8);
+            long higherHalf = BLEUtility.toLongLE(bytes, offset + 8, 8);
             return new UUID(higherHalf, lowerHalf);
         }
         return null;
@@ -348,5 +355,25 @@ public class BleUtility {
         return array;
     }
 */
+    public static JSONObject loadJsonAsset(Context context, String filename) {
+        JSONObject json = null;
+        try {
+            InputStreamReader inputStreamReader = new InputStreamReader(context.getAssets().open(filename), "UTF-8");
+            BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+            StringBuilder stringBuilder = new StringBuilder();
+            while (true) {
+                String line = bufferedReader.readLine();
+                if(line == null)
+                    break;
+                stringBuilder.append(line);
+            }
+            bufferedReader.close();
+            inputStreamReader.close();
+            json = new JSONObject(stringBuilder.toString());
+        } catch (Exception e) {
+            Log.e("[BLE]", "failed to parse json: " + e.getMessage());
+        }
+        return json;
+    }
 
 }

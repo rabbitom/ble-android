@@ -1,6 +1,5 @@
 package net.erabbit.ble;
 
-import android.Manifest;
 import android.app.Fragment;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
@@ -11,7 +10,7 @@ import android.provider.Settings;
 import android.view.View;
 
 import net.erabbit.ble.dialog.GeneralAlertDialog;
-import net.erabbit.ble.interfaces.BLESearchCallback;
+import net.erabbit.ble.interfaces.BLEScanCallback;
 import net.erabbit.ble.utils.LogUtil;
 
 import static android.app.Activity.RESULT_OK;
@@ -28,7 +27,7 @@ public class ScanFragment extends Fragment {
 
     public final String TAG = this.getClass().getSimpleName();
     private BluetoothStateCallback bluetoothStateCallback;
-    private BLESearchCallback bleSearchCallback;
+    private BLEScanCallback bleScanCallback;
 
     public void setBluetoothStateCallback(BluetoothStateCallback bluetoothStateCallback) {
         this.bluetoothStateCallback = bluetoothStateCallback;
@@ -39,8 +38,8 @@ public class ScanFragment extends Fragment {
     }
 
 
-    public void setBleSearchCallback(BLESearchCallback bleSearchCallback) {
-        this.bleSearchCallback = bleSearchCallback;
+    public void setBleSearchCallback(BLEScanCallback bleScanCallback) {
+        this.bleScanCallback = bleScanCallback;
     }
 
     public void tryScan(BluetoothAdapter bluetoothAdapter) {
@@ -67,8 +66,8 @@ public class ScanFragment extends Fragment {
                 bluetoothStateCallback.onBluetoothEnabled();
             } else {
                 // ToastUtil.showToast("蓝牙不可用");
-                if (bleSearchCallback != null) {
-                    bleSearchCallback.onSearchError(BLESearchCallback.ERROR_BLUETOOTH_DISABLE, "蓝牙未开启");
+                if (bleScanCallback != null) {
+                    bleScanCallback.onScanError(BLEScanCallback.ERROR_BLUETOOTH_DISABLE, "蓝牙未开启");
                 }
                 LogUtil.i(TAG, "蓝牙未开启");
             }
@@ -89,8 +88,8 @@ public class ScanFragment extends Fragment {
                     }
                 } else {
 
-                    if (bleSearchCallback != null) {
-                        bleSearchCallback.onSearchError(BLESearchCallback.ERROR_NO_BLUETOOTH_PERMISSION, "未授权使用蓝牙权限");
+                    if (bleScanCallback != null) {
+                        bleScanCallback.onScanError(BLEScanCallback.ERROR_NO_BLUETOOTH_PERMISSION, "未授权使用蓝牙权限");
                     }
                     // 判断用户是否 点击了不再提醒。(检测该权限是否还可以申请)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

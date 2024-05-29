@@ -6,7 +6,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import net.erabbit.ble.interfaces.BLESearchCallback;
+import net.erabbit.ble.interfaces.BLEScanCallback;
 
 import java.util.Map;
 
@@ -14,7 +14,7 @@ import java.util.Map;
  * Created by ziv on 2017/4/20.
  */
 
-public class BleSearchReceiver extends BroadcastReceiver implements BLESearchCallback {
+public class BLEScanReceiver extends BroadcastReceiver implements BLEScanCallback {
 
     public static final String BLE_SEARCH_STARTED = "SearchStarted";
     public static final String BLE_SEARCH_TIME_OUT = "SearchTimeOut";
@@ -23,10 +23,10 @@ public class BleSearchReceiver extends BroadcastReceiver implements BLESearchCal
     public static final String BLE_RSSI_UPDATED = "RSSIUpdated";
     public static final String BLE_SEARCH_ERROR = "SearchError";
 
-    public BleSearchReceiver() {
+    public BLEScanReceiver() {
     }
 
-    public BleSearchReceiver(Context context) {
+    public BLEScanReceiver(Context context) {
         LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(context);
         registerReceiver(lbm);
     }
@@ -55,15 +55,15 @@ public class BleSearchReceiver extends BroadcastReceiver implements BLESearchCal
         switch (intent.getAction()) {
             case BLE_SEARCH_ERROR:
 
-                onSearchError(errId, error);
+                onScanError(errId, error);
                 break;
             case BLE_SEARCH_STARTED:
 
-                onSearchStarted();
+                onScanStarted();
                 break;
             case BLE_SEARCH_TIME_OUT:
 
-                onSearchTimeOut();
+                onScanTimeout();
                 break;
             case BLE_FOUND_DEVICE:
                 onFoundDevice(deviceID, rssi, data, deviceType);
@@ -79,17 +79,17 @@ public class BleSearchReceiver extends BroadcastReceiver implements BLESearchCal
     }
 
     @Override
-    public void onSearchError(int errId, String error) {
+    public void onScanError(int errId, String error) {
 
     }
 
     @Override
-    public void onSearchStarted() {
+    public void onScanStarted() {
 
     }
 
     @Override
-    public void onSearchTimeOut() {
+    public void onScanTimeout() {
 
     }
 

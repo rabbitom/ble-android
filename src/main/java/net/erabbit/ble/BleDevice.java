@@ -19,7 +19,7 @@ import net.erabbit.ble.entity.Characteristic;
 import net.erabbit.ble.entity.DeviceObject;
 import net.erabbit.ble.entity.Service;
 import net.erabbit.ble.interfaces.DeviceStateCallback;
-import net.erabbit.ble.utils.BleUtility;
+import net.erabbit.ble.utils.BLEUtility;
 import net.erabbit.ble.utils.LogUtil;
 
 import org.json.JSONArray;
@@ -114,7 +114,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                     LogUtil.i(TAG, "===characteristic.uuid= " + characteristic.uuid);
                     String uuidStr = characteristic.uuid;
                     if(uuidStr.length() == 4)
-                        uuidStr = BleUtility.UUIDFromShort(uuidStr).toString();
+                        uuidStr = BLEUtility.UUIDFromShort(uuidStr).toString();
                     uuidToNameMap.put(uuidStr.toLowerCase(), characteristic.name);
                 }
             }
@@ -380,7 +380,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             //连接状态改变
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                LogUtil.i(TAG, "connection state: " + BleUtility.getConnectionState(newState));
+                LogUtil.i(TAG, "connection state: " + BLEUtility.getConnectionState(newState));
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     onDeviceConnected(deviceKey);
                     //refreshDeviceCache(gatt);
@@ -471,7 +471,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                 UUID uuid = characteristic.getUuid();
                 byte[] data = characteristic.getValue();
                 if (data != null) {
-                    LogUtil.i(TAG, "received data: " + BleUtility.MakeHexString(data));
+                    LogUtil.i(TAG, "received data: " + BLEUtility.MakeHexString(data));
                     onDeviceReceivedData(deviceKey, uuidToNameMap.get(uuid.toString()), data);
                     // onReceiveData(data);
                 }

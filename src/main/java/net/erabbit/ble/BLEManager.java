@@ -1,9 +1,5 @@
 package net.erabbit.ble;
 
-import android.app.Activity;
-import android.app.Fragment;
-import android.app.FragmentManager;
-import android.app.FragmentTransaction;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -14,7 +10,6 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.ParcelUuid;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -25,8 +20,8 @@ import net.erabbit.ble.entity.Characteristic;
 import net.erabbit.ble.entity.DeviceObject;
 import net.erabbit.ble.entity.FindDeviceData;
 import net.erabbit.ble.entity.Service;
-import net.erabbit.ble.interfaces.BLESearchCallback;
-import net.erabbit.ble.utils.BleUtility;
+import net.erabbit.ble.interfaces.BLEScanCallback;
+import net.erabbit.ble.utils.BLEUtility;
 import net.erabbit.ble.utils.LogUtil;
 
 import org.json.JSONException;
@@ -41,7 +36,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Timer;
-import java.util.TimerTask;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -49,7 +43,7 @@ import java.util.UUID;
  * Created by ziv on 2017/4/18.
  */
 
-public class BleManager implements BLESearchCallback {
+public class BLEManager implements BLEScanCallback {
 
     private static final String TAG = "[BLE]";
     private static final String FRAGMENT_TAG = "BleDeviceScan";
@@ -69,13 +63,14 @@ public class BleManager implements BLESearchCallback {
     private final ArrayList<BluetoothDevice> devices = new ArrayList<>();//保存所有系统搜索到的设备
     private ArrayList<BleDevice> bleDevices = new ArrayList<>(); //保存所有创建后的BleDevice
     private DeviceObject deviceObject;//JSON文件解析返回的对象
+    private ArrayList<JSONObject> deviceClassesMetadata = new ArrayList<>();
 
     private boolean isScanning = false;
 
     private HashMap<String, String> uuidToNameMap = new HashMap<>();
 
     Timer scanTimer;
-    private static BleManager bleManager;
+    private static BLEManager bleManager;
     private LocalBroadcastManager lbm;
     private Context context;
 
@@ -93,19 +88,19 @@ public class BleManager implements BLESearchCallback {
         this.scanFilterByServiceUUID = scanFilterByServiceUUID;
     }
 
-    public static BleManager getInstance(Context context) {
+    public static BLEManager getInstance(Context context) {
 
         if (bleManager == null) {
-            synchronized (BleManager.class) {
+            synchronized (BLEManager.class) {
                 if (bleManager == null) {
-                    bleManager = new BleManager(context);
+                    bleManager = new BLEManager(context);
                 }
             }
         }
         return bleManager;
     }
 
-    private BleManager(Context context) {
+    private BLEManager(Context context) {
         this.context = context;
         lbm = LocalBroadcastManager.getInstance(context);
         mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
@@ -208,7 +203,7 @@ public class BleManager implements BLESearchCallback {
      *
      * @param jsonObject
      */
-
+    // to deprecate
     public void addSearchFilter(JSONObject jsonObject) throws JSONException {
 
         deviceObject = BleDevice.parseJson(jsonObject);
@@ -221,6 +216,10 @@ public class BleManager implements BLESearchCallback {
                 uuidToNameMap.put(characteristic.uuid, characteristic.name);
             }
         }
+    }
+
+    public void addDeviceClass(JSONObject metadata) {
+        deviceClassesMetadata.add(metadata);
     }
 
     /**
@@ -248,97 +247,7 @@ public class BleManager implements BLESearchCallback {
         return curDevice;
     }
 
-
-    /**
-     * 搜索（未处理权限问题）
-     *
-     * @return 是否正常启动搜索
-     */
-    public boolean startSearch(Context context) {
-        if (context == null) {
-            return false;
-        }
-
-        if (!context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
-            onSearchError(ERROR_NO_BLE, "设备不支持BLE");
-            return false;
-        }
-        if (mBluetoothAdapter == null) {
-            //初始化蓝牙适配器
-            final BluetoothManager bluetoothManager =
-                    (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
-            mBluetoothAdapter = bluetoothManager.getAdapter();
-        }
-        if (mBluetoothAdapter != null) {
-            //检查蓝牙是否已打开
-            if (mBluetoothAdapter.isEnabled()) {
-                startScan();
-                return true;
-            } else {
-                onSearchError(ERROR_BLUETOOTH_DISABLE, "蓝牙未开启");
-                //显示对话框要求用户启用蓝牙
-                //Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                //context.startActivityForResult(enableBtIntent, REQUEST_BT_ENABLE);
-            }
-        }
-        return false;
-    }
-
-
-    /**
-     * 搜索（内部已处理权限问题）
-     *
-     * @param activity
-     */
-    public void startSearch(Activity activity) {
-
-        // Use this check to determine whether BLE is supported on the device. Then
-        // you can selectively disable BLE-related features.
-
-        if (activity == null)
-            return;
-
-        if (!activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
-            onSearchError(ERROR_NO_BLE, "设备不支持BLE");
-            return;
-        }
-
-        if (mBluetoothAdapter == null) {
-            //初始化蓝牙适配器
-            final BluetoothManager bluetoothManager =
-                    (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
-            mBluetoothAdapter = bluetoothManager.getAdapter();
-        }
-
-        if (mBluetoothAdapter != null) {
-
-            FragmentManager fm = activity.getFragmentManager();
-            FragmentTransaction ft = fm.beginTransaction();
-
-            Fragment fragment = fm.findFragmentByTag(FRAGMENT_TAG);
-            ScanFragment scanFragment = null;
-
-            if (fragment == null) {
-                scanFragment = new ScanFragment();
-                ft.add(scanFragment, FRAGMENT_TAG);
-                ft.commit();//异步的==!
-                fm.executePendingTransactions();//同步执行
-                scanFragment.setBluetoothStateCallback(new ScanFragment.BluetoothStateCallback() {
-                    @Override
-                    public void onBluetoothEnabled() {
-                        startScan();
-                    }
-                });
-            } else {
-                scanFragment = (ScanFragment) fragment;
-            }
-
-            scanFragment.tryScan(mBluetoothAdapter);
-        }
-    }
-
-
-    protected void startScan() {
+    public void startScan() {
         //数据初值
         findDeviceHashMap.clear();
         synchronized (devices) {
@@ -351,7 +260,7 @@ public class BleManager implements BLESearchCallback {
             if(UUIDString != null)
                 try {
                     if (UUIDString.length() == 4)
-                        mainServiceUUID = BleUtility.UUIDFromShort(UUIDString);
+                        mainServiceUUID = BLEUtility.UUIDFromShort(UUIDString);
                     else {
                         if (UUIDString.length() == 32)
                             UUIDString = UUIDString.substring(0, 8) + "-" +
@@ -382,27 +291,15 @@ public class BleManager implements BLESearchCallback {
         catch(SecurityException exception) {
             LogUtil.e(TAG, exception.getMessage());
         }
-        LogUtil.i(TAG, "===isScanning=" + isScanning);
-        if (isScanning) {
-            onSearchStarted();
-            if (timeSearch > 0) {
-                scanTimer = new Timer();
-                scanTimer.schedule(new TimerTask() {
-                    public void run() {
-                        if (isScanning) {
-                            stopSearch();
-                            onSearchTimeOut();//超时
-                        }
-                    }
-                }, timeSearch);
-            }
-        }
+        LogUtil.i(TAG, "scanning: " + isScanning);
+        if (isScanning)
+            onScanStarted();
     }
 
     /**
      * 停止扫描
      */
-    public void stopSearch() {
+    public void stopScan() {
 
         if (isScanning) {
             scanTimer.cancel();
@@ -418,7 +315,7 @@ public class BleManager implements BLESearchCallback {
         }
     }
 
-    public boolean isSearching() {
+    public boolean isScanning() {
         return isScanning;
     }
 
@@ -426,10 +323,10 @@ public class BleManager implements BLESearchCallback {
         Map<Integer, byte[]> scanRecords = new TreeMap<>();
         int offset = 0;
         while (scanRecord.length > offset) {
-            int length = BleUtility.toInt(scanRecord[offset]);
+            int length = BLEUtility.toInt(scanRecord[offset]);
             if (length > 0) {
-                LogUtil.i(TAG, "scan: " + BleUtility.MakeHexString(scanRecord, offset + 1, length));
-                int key = BleUtility.toInt(scanRecord[offset + 1]);
+                LogUtil.i(TAG, "scan: " + BLEUtility.MakeHexString(scanRecord, offset + 1, length));
+                int key = BLEUtility.toInt(scanRecord[offset + 1]);
                 byte[] valueBytes = new byte[length - 1];
                 System.arraycopy(scanRecord, offset + 2, valueBytes, 0, length - 1);
                 scanRecords.put(key, valueBytes);
@@ -485,7 +382,7 @@ public class BleManager implements BLESearchCallback {
     }
 
     @Override
-    public void onSearchError(int errId, String error) {
+    public void onScanError(int errId, String error) {
         Intent intent = new Intent("SearchError");
         intent.putExtra("errId", errId);
         intent.putExtra("error", error);
@@ -493,13 +390,12 @@ public class BleManager implements BLESearchCallback {
     }
 
     @Override
-    public void onSearchStarted() {
-
+    public void onScanStarted() {
         lbm.sendBroadcast(new Intent("SearchStarted"));
     }
 
     @Override
-    public void onSearchTimeOut() {
+    public void onScanTimeout() {
         lbm.sendBroadcast(new Intent("SearchTimeOut"));
 
     }

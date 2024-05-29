@@ -5,7 +5,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.util.Log;
 
-import net.erabbit.ble.utils.BleUtility;
+import net.erabbit.ble.utils.BLEUtility;
 
 import java.util.UUID;
 
@@ -43,7 +43,7 @@ public class BluetoothGattOperation {
 					case READ_CHARACTERISTIC:
 						return gatt.readCharacteristic(characteristic);
 					case WRITE_CHARACTERISTIC:
-						Log.i("Ble", "write data: " + BleUtility.MakeHexString(value));
+						Log.i("Ble", "write data: " + BLEUtility.MakeHexString(value));
 						characteristic.setValue(value);
 						return gatt.writeCharacteristic(characteristic);
 					case ENABLE_NOTIFICATION: {
