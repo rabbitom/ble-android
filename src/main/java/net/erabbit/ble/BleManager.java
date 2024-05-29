@@ -15,13 +15,12 @@ import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.ParcelUuid;
-import android.support.annotation.RequiresApi;
-import android.support.v4.content.LocalBroadcastManager;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import android.util.Log;
 
-import net.erabbit.ble.entity.Advertisement;
 import net.erabbit.ble.entity.Characteristic;
 import net.erabbit.ble.entity.DeviceObject;
 import net.erabbit.ble.entity.FindDeviceData;
@@ -30,7 +29,6 @@ import net.erabbit.ble.interfaces.BLESearchCallback;
 import net.erabbit.ble.utils.BleUtility;
 import net.erabbit.ble.utils.LogUtil;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -41,7 +39,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -52,9 +49,9 @@ import java.util.UUID;
  * Created by ziv on 2017/4/18.
  */
 
-public class BleDevicesManager implements BLESearchCallback {
+public class BleManager implements BLESearchCallback {
 
-    private static final String TAG = "ble";
+    private static final String TAG = "[BLE]";
     private static final String FRAGMENT_TAG = "BleDeviceScan";
 
     //BLE广播数据类型，02~07都是服务UUID，参考：https://www.bluetooth.com/specifications/assigned-numbers/generic-access-profile
@@ -78,7 +75,7 @@ public class BleDevicesManager implements BLESearchCallback {
     private HashMap<String, String> uuidToNameMap = new HashMap<>();
 
     Timer scanTimer;
-    private static BleDevicesManager bleDevicesManager;
+    private static BleManager bleManager;
     private LocalBroadcastManager lbm;
     private Context context;
 
@@ -96,19 +93,19 @@ public class BleDevicesManager implements BLESearchCallback {
         this.scanFilterByServiceUUID = scanFilterByServiceUUID;
     }
 
-    public static BleDevicesManager getInstance(Context context) {
+    public static BleManager getInstance(Context context) {
 
-        if (bleDevicesManager == null) {
-            synchronized (BleDevicesManager.class) {
-                if (bleDevicesManager == null) {
-                    bleDevicesManager = new BleDevicesManager(context);
+        if (bleManager == null) {
+            synchronized (BleManager.class) {
+                if (bleManager == null) {
+                    bleManager = new BleManager(context);
                 }
             }
         }
-        return bleDevicesManager;
+        return bleManager;
     }
 
-    private BleDevicesManager(Context context) {
+    private BleManager(Context context) {
         this.context = context;
         lbm = LocalBroadcastManager.getInstance(context);
         mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
@@ -118,24 +115,20 @@ public class BleDevicesManager implements BLESearchCallback {
             }
         };
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-
-            if (mBluetoothAdapter == null) {
-                //初始化蓝牙适配器
-                final BluetoothManager bluetoothManager =
-                        (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
-                mBluetoothAdapter = bluetoothManager.getAdapter();
-            }
-            mBluetoothLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
-            mScanCallback = new ScanCallback() {
-                @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-                @Override
-                public void onScanResult(int callbackType, ScanResult result) {
-                    super.onScanResult(callbackType, result);
-                    doScanCallback(result.getDevice(), result.getRssi(), result.getScanRecord().getBytes());
-                }
-            };
+        if (mBluetoothAdapter == null) {
+            //初始化蓝牙适配器
+            final BluetoothManager bluetoothManager =
+                    (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+            mBluetoothAdapter = bluetoothManager.getAdapter();
         }
+        mBluetoothLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
+        mScanCallback = new ScanCallback() {
+            @Override
+            public void onScanResult(int callbackType, ScanResult result) {
+                super.onScanResult(callbackType, result);
+                doScanCallback(result.getDevice(), result.getRssi(), result.getScanRecord().getBytes());
+            }
+        };
     }
 
 
@@ -152,7 +145,7 @@ public class BleDevicesManager implements BLESearchCallback {
         //解析广播数据
         Map<Integer, byte[]> scanRecordMap = parseScanRecord(scanRecord);
         byte[] serviceUUIDBytes = null;
-        for(int k = BLE_ADVERTISEMENT_SERVICE_UUID_BEGIN; k <= BLE_ADVERTISEMENT_SERVICE_UUID_END; k++) {
+        for (int k = BLE_ADVERTISEMENT_SERVICE_UUID_BEGIN; k <= BLE_ADVERTISEMENT_SERVICE_UUID_END; k++) {
             if (scanRecordMap.containsKey(k)) {
                 serviceUUIDBytes = scanRecordMap.get(k);
                 break;
@@ -194,8 +187,13 @@ public class BleDevicesManager implements BLESearchCallback {
             findDeviceHashMap.put(device.getAddress(), findDeviceData);
         }
 
-        LogUtil.i(TAG, String.format("onFoundDevice, name = %s, address = %s", device.getName(), device.getAddress()));
-        onFoundDevice(device.getAddress(), rssi, scanRecordMap, device.getName());
+        try {
+            LogUtil.i(TAG, String.format("found device, name = %s, address = %s", device.getName(), device.getAddress()));
+            onFoundDevice(device.getAddress(), rssi, scanRecordMap, device.getName());
+        }
+        catch(SecurityException exception) {
+            LogUtil.e(TAG, exception.getMessage());
+        }
         findDeviceData.hasCalledOnFound = true;
     }
 
@@ -367,23 +365,22 @@ public class BleDevicesManager implements BLESearchCallback {
                     LogUtil.i(TAG, "can't make uuid from service uuid string: " + e.getMessage());
                 }
         }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            if (mainServiceUUID != null)
-                isScanning = mBluetoothAdapter.startLeScan(new UUID[]{mainServiceUUID}, mLeScanCallback);
-            else
-                isScanning = mBluetoothAdapter.startLeScan(mLeScanCallback);
-        } else {
-            if (mBluetoothLeScanner == null) {
-                mBluetoothLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
-            }
+        if (mBluetoothLeScanner == null) {
+            mBluetoothLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
+        }
+        try {
             if(mainServiceUUID != null) {
                 ScanFilter filter = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(mainServiceUUID)).build();
                 ArrayList<ScanFilter> filters = new ArrayList<>();
                 filters.add(filter);
                 mBluetoothLeScanner.startScan(filters, new ScanSettings.Builder().build(), mScanCallback);
             }
-            mBluetoothLeScanner.startScan(mScanCallback);
+            else
+                mBluetoothLeScanner.startScan(mScanCallback);
             isScanning = true;
+        }
+        catch(SecurityException exception) {
+            LogUtil.e(TAG, exception.getMessage());
         }
         LogUtil.i(TAG, "===isScanning=" + isScanning);
         if (isScanning) {
@@ -410,13 +407,14 @@ public class BleDevicesManager implements BLESearchCallback {
         if (isScanning) {
             scanTimer.cancel();
             isScanning = false;
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                mBluetoothAdapter.stopLeScan(mLeScanCallback);
-            } else {
-                //如果停止搜索时蓝牙已经关掉会导致崩溃
-                if(mBluetoothAdapter.isEnabled())
+            //如果停止搜索时蓝牙已经关掉会导致崩溃
+            if(mBluetoothAdapter.isEnabled())
+                try {
                     mBluetoothLeScanner.stopScan(mScanCallback);
-            }
+                }
+                catch(SecurityException exception) {
+                    Log.e(TAG, exception.getMessage());
+                }
         }
     }
 

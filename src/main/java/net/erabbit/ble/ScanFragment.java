@@ -8,7 +8,6 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
-import android.support.v4.content.ContextCompat;
 import android.view.View;
 
 import net.erabbit.ble.dialog.GeneralAlertDialog;
@@ -51,21 +50,8 @@ public class ScanFragment extends Fragment {
             startActivityForResult(enableBtIntent, 0);
         } else {
             //蓝牙可用,开始扫描
-            if (getActivity() != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-
-                    if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                        requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
-                    } else {
-                        //开始扫描
-                        if (bluetoothStateCallback != null)
-                            bluetoothStateCallback.onBluetoothEnabled();
-                    }
-                } else {
-                    if (bluetoothStateCallback != null)
-                        bluetoothStateCallback.onBluetoothEnabled();
-                }
-            }
+            if (bluetoothStateCallback != null)
+                bluetoothStateCallback.onBluetoothEnabled();
         }
     }
 
@@ -78,17 +64,7 @@ public class ScanFragment extends Fragment {
             if (resultCode == RESULT_OK) {
                 //蓝牙可用,开始扫描
                 LogUtil.i(TAG, "蓝牙可用,开始扫描");
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-                        requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
-                    } else {
-                        bluetoothStateCallback.onBluetoothEnabled();
-                    }
-                } else {
-                    bluetoothStateCallback.onBluetoothEnabled();
-                }
-
+                bluetoothStateCallback.onBluetoothEnabled();
             } else {
                 // ToastUtil.showToast("蓝牙不可用");
                 if (bleSearchCallback != null) {

@@ -5,12 +5,9 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.util.Log;
 
-
 import net.erabbit.ble.utils.BleUtility;
 
 import java.util.UUID;
-
-//import cn.cooltools.lifetrack.LifeTrackApp;
 
 public class BluetoothGattOperation {
 
@@ -41,37 +38,39 @@ public class BluetoothGattOperation {
 	//执行操作
 	public boolean Execute() {
 		if(characteristic != null) {
-			switch(operation)
-			{
-			case READ_CHARACTERISTIC:
-				return gatt.readCharacteristic(characteristic);
-			case WRITE_CHARACTERISTIC:
-				Log.i("Ble", "write data: " + BleUtility.MakeHexString(value));
-		   		characteristic.setValue(value);
-		   		return gatt.writeCharacteristic(characteristic);
-			case ENABLE_NOTIFICATION:
-			{
-		   		gatt.setCharacteristicNotification(characteristic, true);
-		   		BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID_CLIENT_CHARACTERISTIC_CONFIG);
-		   		if(descriptor != null) {
-			   		descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-			   		return gatt.writeDescriptor(descriptor);
-		   		}
+			try {
+				switch (operation) {
+					case READ_CHARACTERISTIC:
+						return gatt.readCharacteristic(characteristic);
+					case WRITE_CHARACTERISTIC:
+						Log.i("Ble", "write data: " + BleUtility.MakeHexString(value));
+						characteristic.setValue(value);
+						return gatt.writeCharacteristic(characteristic);
+					case ENABLE_NOTIFICATION: {
+						gatt.setCharacteristicNotification(characteristic, true);
+						BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID_CLIENT_CHARACTERISTIC_CONFIG);
+						if (descriptor != null) {
+							descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+							return gatt.writeDescriptor(descriptor);
+						}
+					}
+					break;
+					case DISABLE_NOTIFICATION: {
+						gatt.setCharacteristicNotification(characteristic, false);
+						BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID_CLIENT_CHARACTERISTIC_CONFIG);
+						if (descriptor != null) {
+							descriptor.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+							return gatt.writeDescriptor(descriptor);
+						}
+					}
+					break;
+				}
 			}
-		   		break;
-			case DISABLE_NOTIFICATION:
-			{
-		   		gatt.setCharacteristicNotification(characteristic, false);
-		   		BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID_CLIENT_CHARACTERISTIC_CONFIG);
-		   		if(descriptor != null) {
-			   		descriptor.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
-			   		return gatt.writeDescriptor(descriptor);
-		   		}
-			}
-				break;
+			catch(SecurityException exception) {
+				Log.e("[BLE]", exception.getMessage());
 			}
 		}
-		Log.i("Ble", "operation not executed, type = " + operation);
+		Log.i("[BLE]", "operation not executed, type = " + operation);
 		return false;
 	}
 }

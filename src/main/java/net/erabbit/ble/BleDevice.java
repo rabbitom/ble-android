@@ -11,7 +11,7 @@ import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.content.Intent;
-import android.support.v4.content.LocalBroadcastManager;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
 
 import net.erabbit.ble.entity.Advertisement;
@@ -63,7 +63,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
         return testjson;
     }
 
-    private String TAG = "ble ";
+    private String TAG = "[BLE]";
 
     private DeviceObject deviceObject;//JSON文件解析返回的对象
     private HashMap<String, String> uuidToNameMap = new HashMap<>();
@@ -85,9 +85,19 @@ public class BleDevice implements DeviceStateCallback, Serializable {
         this.context = context;
         lbm = LocalBroadcastManager.getInstance(context);
         nativeDevice = device;
-        deviceKey = (device != null) ? nativeDevice.getAddress() : "";
-        deviceName = (device != null) ? nativeDevice.getName() : "";
-        TAG += device.getName();
+        if(device != null) {
+            deviceKey = nativeDevice.getAddress();
+            try {
+                deviceName = nativeDevice.getName();
+            }
+            catch(SecurityException exception) {
+                LogUtil.e(TAG, exception.getMessage());
+            }
+        }
+        else {
+            deviceKey = "";
+            deviceName = "";
+        }
         try {
             deviceObject = parseJson(jsonObject);
         } catch (JSONException e) {
@@ -187,7 +197,13 @@ public class BleDevice implements DeviceStateCallback, Serializable {
 
     public boolean getConnected() {
         BluetoothManager btManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
-        int connectionState = btManager.getConnectionState(nativeDevice, BluetoothProfile.GATT);
+        int connectionState = BluetoothGatt.STATE_DISCONNECTED;
+        try {
+            connectionState = btManager.getConnectionState(nativeDevice, BluetoothProfile.GATT);
+        }
+        catch(SecurityException exception) {
+            LogUtil.e(TAG, exception.getMessage());
+        }
         return (connectionState == BluetoothGatt.STATE_CONNECTED);
     }
 
@@ -210,12 +226,17 @@ public class BleDevice implements DeviceStateCallback, Serializable {
     public void connect() {
         if (nativeDevice != null) {
             LogUtil.i(TAG, "connect device: " + deviceKey);
-            if (btGatt == null) {
-                if (mGattCallback == null)
-                    mGattCallback = getGattCallback();
-                btGatt = nativeDevice.connectGatt(context, false, mGattCallback);
-            } else
-                btGatt.connect();
+            try {
+                if (btGatt == null) {
+                    if (mGattCallback == null)
+                        mGattCallback = getGattCallback();
+                    btGatt = nativeDevice.connectGatt(context, false, mGattCallback);
+                } else
+                    btGatt.connect();
+            }
+            catch(SecurityException exception) {
+                LogUtil.e(TAG, exception.getMessage());
+            }
         }
     }
 
@@ -224,8 +245,13 @@ public class BleDevice implements DeviceStateCallback, Serializable {
      */
     public void disconnect() {
         if (btGatt != null) {
-            btGatt.disconnect();
-            btGatt.close();
+            try {
+                btGatt.disconnect();
+                btGatt.close();
+            }
+            catch(SecurityException exception) {
+                LogUtil.e(TAG, exception.getMessage());
+            }
             btGatt = null;
         }
     }
@@ -309,7 +335,12 @@ public class BleDevice implements DeviceStateCallback, Serializable {
      * 读取设备信号强度
      */
     public void readRSSI() {
-        btGatt.readRemoteRssi();
+        try {
+            btGatt.readRemoteRssi();
+        }
+        catch(SecurityException exception) {
+            LogUtil.e(TAG, exception.getMessage());
+        }
     }
 
     public int getDeviceRSSI() {
@@ -357,7 +388,12 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                         gattOperationQueue.clear();
                     int serviceCount = gatt.getServices().size();
                     if (serviceCount == 0)
-                        gatt.discoverServices();
+                        try {
+                            gatt.discoverServices();
+                        }
+                        catch(SecurityException exception) {
+                            LogUtil.e(TAG, exception.getMessage());
+                        }
                     else {
                         LogUtil.i(TAG, "device already has services, skip discover");
                         onServicesDiscovered(gatt, BluetoothGatt.GATT_SUCCESS);
