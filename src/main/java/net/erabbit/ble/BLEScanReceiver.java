@@ -16,61 +16,47 @@ import java.util.Map;
 
 public class BLEScanReceiver extends BroadcastReceiver implements BLEScanCallback {
 
-    public static final String BLE_SEARCH_STARTED = "SearchStarted";
-    public static final String BLE_SEARCH_TIME_OUT = "SearchTimeOut";
-    public static final String BLE_FOUND_DEVICE = "FoundDevice";
-    public static final String BLE_ADVERTISEMENT_UPDATED = "AdvertisementUpdated";
-    public static final String BLE_RSSI_UPDATED = "RSSIUpdated";
-    public static final String BLE_SEARCH_ERROR = "SearchError";
-
     public BLEScanReceiver() {
     }
 
     public BLEScanReceiver(Context context) {
         LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(context);
-        registerReceiver(lbm);
+        registerWithBroadcastManager(lbm);
     }
 
-    public void registerReceiver(LocalBroadcastManager lbm) {
-
+    public void registerWithBroadcastManager(LocalBroadcastManager lbm) {
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(BLE_SEARCH_ERROR);
-        intentFilter.addAction(BLE_SEARCH_STARTED);
-        intentFilter.addAction(BLE_SEARCH_TIME_OUT);
+        intentFilter.addAction(BLE_SCAN_ERROR);
+        intentFilter.addAction(BLE_SCAN_STARTED);
+        intentFilter.addAction(BLE_SCAN_STOPPED);
         intentFilter.addAction(BLE_FOUND_DEVICE);
         intentFilter.addAction(BLE_ADVERTISEMENT_UPDATED);
         intentFilter.addAction(BLE_RSSI_UPDATED);
         lbm.registerReceiver(this, intentFilter);
     }
 
-
     @Override
     public void onReceive(Context context, Intent intent) {
         int errId = intent.getIntExtra("errId", 0);
         String error = intent.getStringExtra("error");
-        String deviceID = intent.getStringExtra("deviceID");
+        String deviceID = intent.getStringExtra("deviceId");
         int rssi = intent.getIntExtra("rssi", 0);
         Map<Integer, byte[]> data = (Map<Integer, byte[]>) intent.getSerializableExtra("data");
-        String deviceType = intent.getStringExtra("deviceType");
         switch (intent.getAction()) {
-            case BLE_SEARCH_ERROR:
-
+            case BLE_SCAN_ERROR:
                 onScanError(errId, error);
                 break;
-            case BLE_SEARCH_STARTED:
-
+            case BLE_SCAN_STARTED:
                 onScanStarted();
                 break;
-            case BLE_SEARCH_TIME_OUT:
-
-                onScanTimeout();
+            case BLE_SCAN_STOPPED:
+                onScanStopped();
                 break;
             case BLE_FOUND_DEVICE:
-                onFoundDevice(deviceID, rssi, data, deviceType);
+                onFoundDevice(deviceID);
                 break;
             case BLE_ADVERTISEMENT_UPDATED:
-
-                onAdvertisementUpdated(deviceID,data);
+                onAdvertisementUpdated(deviceID, data);
                 break;
             case BLE_RSSI_UPDATED:
                 onRSSIUpdated(deviceID, rssi);
@@ -89,12 +75,12 @@ public class BLEScanReceiver extends BroadcastReceiver implements BLEScanCallbac
     }
 
     @Override
-    public void onScanTimeout() {
+    public void onScanStopped() {
 
     }
 
     @Override
-    public void onFoundDevice(String deviceID, int rssi, Map<Integer, byte[]> data, String deviceType) {
+    public void onFoundDevice(String deviceID) {
 
     }
 

@@ -9,8 +9,12 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
+import android.bluetooth.le.ScanRecord;
+import android.bluetooth.le.ScanResult;
 import android.content.Context;
 import android.content.Intent;
+
+import androidx.annotation.NonNull;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
 
@@ -26,8 +30,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -42,33 +44,14 @@ import java.util.UUID;
  * Created by ziv on 2017/4/18.
  */
 
-public class BleDevice implements DeviceStateCallback, Serializable {
+public class BLEDevice implements DeviceStateCallback, Serializable {
 
-    public static JSONObject loadJsonAsset(Context context, String filename) {
-        JSONObject testjson = null;
-        try {
-            InputStreamReader isr = new InputStreamReader(context.getAssets().open(filename), "UTF-8");
-            BufferedReader br = new BufferedReader(isr);
-            String line;
-            StringBuilder builder = new StringBuilder();
-            while ((line = br.readLine()) != null) {
-                builder.append(line);
-            }
-            br.close();
-            isr.close();
-            testjson = new JSONObject(builder.toString());//builder读取了JSON中的数据。
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return testjson;
-    }
+    private static final String TAG = "[BLE]";
 
-    private String TAG = "[BLE]";
-
+    private static JSONObject metadata;
     private DeviceObject deviceObject;//JSON文件解析返回的对象
     private HashMap<String, String> uuidToNameMap = new HashMap<>();
 
-    private String deviceKey;//(只读）系统原生蓝牙设备的ID，字符串类型
     private String deviceName;//设备名称，默认使用广播名或设备名，可以修改
     private Map advertisementData;//广播数据，字典类型
     private int deviceRSSI;
@@ -81,12 +64,38 @@ public class BleDevice implements DeviceStateCallback, Serializable {
 
     private transient HashMap<String, BluetoothGattCharacteristic> gattCharacteristicMap = new HashMap<>();
 
-    public BleDevice(Context context, BluetoothDevice device, JSONObject jsonObject) {
+    public String getDeviceId() {
+        return nativeDevice.getAddress();
+    }
+
+    public BLEDevice(@NonNull BluetoothDevice device) {
+        nativeDevice = device;
+        try {
+            deviceName = nativeDevice.getName();
+        }
+        catch(SecurityException exception) {
+            LogUtil.e(TAG, exception.getMessage());
+        }
+    }
+
+    public BLEDevice(ScanResult scanResult) {
+        nativeDevice = scanResult.getDevice();
+        try {
+            ScanRecord scanRecord = scanResult.getScanRecord();
+            if(scanRecord != null)
+                deviceName = scanRecord.getDeviceName();
+            deviceRSSI = scanResult.getRssi();
+        }
+        catch(SecurityException exception) {
+            LogUtil.e(TAG, exception.getMessage());
+        }
+    }
+
+    public BLEDevice(Context context, BluetoothDevice device, JSONObject jsonObject) {
         this.context = context;
         lbm = LocalBroadcastManager.getInstance(context);
         nativeDevice = device;
         if(device != null) {
-            deviceKey = nativeDevice.getAddress();
             try {
                 deviceName = nativeDevice.getName();
             }
@@ -95,7 +104,6 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             }
         }
         else {
-            deviceKey = "";
             deviceName = "";
         }
         try {
@@ -120,17 +128,6 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             }
         }
 
-    }
-
-    public void restore(Context context) {
-        this.context = context;
-        BluetoothManager btManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
-        if((btManager != null) && (deviceKey != null) && BluetoothAdapter.checkBluetoothAddress(deviceKey)) {
-            BluetoothAdapter btAdapter = btManager.getAdapter();
-            this.nativeDevice = btAdapter.getRemoteDevice(deviceKey);
-        }
-        gattCharacteristicMap = new HashMap<>();
-        lbm = LocalBroadcastManager.getInstance(context);
     }
 
     //解析JSON
@@ -182,11 +179,6 @@ public class BleDevice implements DeviceStateCallback, Serializable {
         return deviceObject;
     }
 
-
-    public String getDeviceKey() {
-        return deviceKey;
-    }
-
     public String getDeviceName() {
         return deviceName;
     }
@@ -211,7 +203,6 @@ public class BleDevice implements DeviceStateCallback, Serializable {
         return deviceObject;
     }
 
-
     public void setAdvertisementData(Map data) {
         this.advertisementData = data;
     }
@@ -225,7 +216,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
      */
     public void connect() {
         if (nativeDevice != null) {
-            LogUtil.i(TAG, "connect device: " + deviceKey);
+            LogUtil.i(TAG, "connect device: " + getDeviceId());
             try {
                 if (btGatt == null) {
                     if (mGattCallback == null)
@@ -382,7 +373,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
                 LogUtil.i(TAG, "connection state: " + BLEUtility.getConnectionState(newState));
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    onDeviceConnected(deviceKey);
+                    onDeviceConnected(getDeviceId());
                     //refreshDeviceCache(gatt);
                     if (gattOperationQueue != null)
                         gattOperationQueue.clear();
@@ -399,7 +390,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                         onServicesDiscovered(gatt, BluetoothGatt.GATT_SUCCESS);
                     }
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    onDeviceDisconnected(deviceKey);
+                    onDeviceDisconnected(getDeviceId());
                 }
             }
 
@@ -456,14 +447,14 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                     }
 
                     if (!isMatch) {
-                        onDeviceMismatch(deviceKey);
+                        onDeviceMismatch(getDeviceId());
                     }
-                    onDeviceReady(deviceKey);
+                    onDeviceReady(getDeviceId());
 
                 } else {
                     LogUtil.i(TAG, "discover services failed");
                     disconnect();
-                    onDeviceError(deviceKey, 101, "discover services failed");
+                    onDeviceError(getDeviceId(), 101, "discover services failed");
                 }
             }
 
@@ -472,7 +463,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
                 byte[] data = characteristic.getValue();
                 if (data != null) {
                     LogUtil.i(TAG, "received data: " + BLEUtility.MakeHexString(data));
-                    onDeviceReceivedData(deviceKey, uuidToNameMap.get(uuid.toString()), data);
+                    onDeviceReceivedData(getDeviceId(), uuidToNameMap.get(uuid.toString()), data);
                     // onReceiveData(data);
                 }
             }
@@ -520,7 +511,7 @@ public class BleDevice implements DeviceStateCallback, Serializable {
             public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
                 //super.onReadRemoteRssi(gatt, rssi, status);
                 if (status == BluetoothGatt.GATT_SUCCESS) {
-                    onDeviceRSSIUpdated(deviceKey, rssi);
+                    onDeviceRSSIUpdated(getDeviceId(), rssi);
                     deviceRSSI = rssi;
                 }
             }

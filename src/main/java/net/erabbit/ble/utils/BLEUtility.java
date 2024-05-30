@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
@@ -374,6 +375,25 @@ public class BLEUtility {
             Log.e("[BLE]", "failed to parse json: " + e.getMessage());
         }
         return json;
+    }
+
+    public static String[] getPermissionsToRequest(Context context) {
+        String[] permissionsToCheck;
+        if(Build.VERSION.SDK_INT > 30)
+            permissionsToCheck = new String[]{"android.permission.BLUETOOTH_SCAN", "android.permission.BLUETOOTH_CONNECT"};
+        else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            permissionsToCheck = new String[]{"android.permission.ACCESS_FINE_LOCATION"};
+        else
+            permissionsToCheck = new String[]{"android.permission.ACCESS_COARSE_LOCATION"};
+        ArrayList<String> permissionsNotGranted = new ArrayList<>();
+        for(String permission: permissionsToCheck) {
+            if(context.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNotGranted.add(permission);
+            }
+        }
+        String[] permissionsToRequest = new String[permissionsNotGranted.size()];
+        permissionsNotGranted.toArray(permissionsToRequest);
+        return permissionsToRequest;
     }
 
 }
