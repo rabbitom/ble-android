@@ -5,9 +5,8 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
-import android.bluetooth.le.ScanFilter;
+import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
-import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.Intent;
 import android.os.ParcelUuid;
@@ -16,10 +15,6 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.util.Log;
 
-import net.erabbit.ble.entity.Characteristic;
-import net.erabbit.ble.entity.DeviceObject;
-import net.erabbit.ble.entity.FindDeviceData;
-import net.erabbit.ble.entity.Service;
 import net.erabbit.ble.interfaces.BLEScanCallback;
 import net.erabbit.ble.utils.BLEUtility;
 import net.erabbit.ble.utils.LogUtil;
@@ -29,15 +24,10 @@ import org.json.JSONObject;
 
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
-import java.util.UUID;
 
 public class BLEManager implements BLEScanCallback {
 
@@ -46,6 +36,11 @@ public class BLEManager implements BLEScanCallback {
     protected BluetoothAdapter mBluetoothAdapter;
     private final ArrayList<BLEDevice> bleDevices = new ArrayList<>(); //保存所有创建后的BleDevice
     private final ArrayList<JSONObject> deviceClassesMetadata = new ArrayList<>();
+    private final Map<String,Class<?>> deviceClasses = new HashMap<>();
+    private boolean ignoreDevicesOfUnknownClass = false;
+    public void setIgnoreDevicesOfUnknownClass(boolean ignore) {
+        ignoreDevicesOfUnknownClass = ignore;
+    }
 
     private boolean isScanning = false;
 
@@ -72,8 +67,45 @@ public class BLEManager implements BLEScanCallback {
                 Log.i(TAG, "scan result:" + result);
                 String deviceId = result.getDevice().getAddress();
                 if(getDevice(deviceId) == null) {
-                    BLEDevice bleDevice = new BLEDevice(result);
-                    bleDevices.add(bleDevice);
+                    JSONObject deviceClassMetadata = null;
+                    ScanRecord scanRecord = result.getScanRecord();
+                    for(JSONObject metadata : deviceClassesMetadata) {
+                        if(metadata.has("scanFilters")) {
+                            try {
+                                JSONObject scanFilters = metadata.getJSONObject("scanFilters");
+                                if(scanFilters.has("serviceData")) {
+                                    JSONObject serviceData = scanFilters.getJSONObject("serviceData");
+                                    String uuid = serviceData.getString("uuid");
+                                    ParcelUuid parcelUuid = new ParcelUuid(BLEUtility.UUIDFromShort(uuid));
+                                    if(scanRecord != null && scanRecord.getServiceData(parcelUuid) != null) {
+                                        deviceClassMetadata = metadata;
+                                        break;
+                                    }
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "parse scanFilters failed: " + e.getMessage());
+                            }
+                        }
+                    }
+                    BLEDevice bleDevice = null;
+                    if(deviceClassMetadata != null) {
+                        try {
+                            String className = deviceClassMetadata.getString("class");
+                            Class<?> deviceClass = deviceClasses.get(className);
+                            if(deviceClass != null) {
+                                Constructor<?> constructor = deviceClass.getConstructor(ScanResult.class);
+                                bleDevice = (BLEDevice) constructor.newInstance(result);
+                            }
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    else if(!ignoreDevicesOfUnknownClass)
+                        bleDevice = new BLEDevice(result);
+                    else
+                        return;
+                    if(bleDevice != null)
+                        bleDevices.add(bleDevice);
                 }
                 onFoundDevice(deviceId);
             }
@@ -90,8 +122,15 @@ public class BLEManager implements BLEScanCallback {
         };
     }
 
-    public void addDeviceClass(JSONObject metadata) {
-        deviceClassesMetadata.add(metadata);
+    public void addDeviceClass(Class<?> deviceClass, JSONObject metadata) {
+        try {
+            String className = metadata.getString("class");
+            deviceClasses.put(className, deviceClass);
+            deviceClassesMetadata.add(metadata);
+        }
+        catch (JSONException exception) {
+            Log.e(TAG, "add device class failed: " + exception.getMessage());
+        }
     }
 
     public void startScan() {
