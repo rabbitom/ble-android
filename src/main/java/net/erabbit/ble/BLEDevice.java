@@ -48,7 +48,12 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
 
     private static final String TAG = "[BLE]";
 
-    private static JSONObject metadata;
+    protected static JSONObject metadata;
+
+    public static JSONObject getMetadata() {
+        return metadata;
+    }
+
     private DeviceObject deviceObject;//JSON文件解析返回的对象
     private HashMap<String, String> uuidToNameMap = new HashMap<>();
 
