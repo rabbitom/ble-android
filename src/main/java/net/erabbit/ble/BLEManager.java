@@ -66,7 +66,8 @@ public class BLEManager implements BLEScanCallback {
             public void onScanResult(int callbackType, ScanResult result) {
                 Log.i(TAG, "scan result:" + result);
                 String deviceId = result.getDevice().getAddress();
-                if(getDevice(deviceId) == null) {
+                BLEDevice device = getDevice(deviceId);
+                if(device == null) {
                     JSONObject deviceClassMetadata = null;
                     ScanRecord scanRecord = result.getScanRecord();
                     for(JSONObject metadata : deviceClassesMetadata) {
@@ -107,6 +108,8 @@ public class BLEManager implements BLEScanCallback {
                     if(bleDevice != null)
                         bleDevices.add(bleDevice);
                 }
+                else
+                    device.updateStatus(result);
                 onFoundDevice(deviceId);
             }
 

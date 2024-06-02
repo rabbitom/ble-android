@@ -85,6 +85,10 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
 
     public BLEDevice(ScanResult scanResult) {
         nativeDevice = scanResult.getDevice();
+        updateStatus(scanResult);
+    }
+
+    public void updateStatus(ScanResult scanResult) {
         try {
             ScanRecord scanRecord = scanResult.getScanRecord();
             if(scanRecord != null)
@@ -92,7 +96,7 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
             deviceRSSI = scanResult.getRssi();
         }
         catch(SecurityException exception) {
-            LogUtil.e(TAG, exception.getMessage());
+            LogUtil.e(TAG, "parse scan result failed: " + exception.getMessage());
         }
     }
 
