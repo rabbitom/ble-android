@@ -213,6 +213,17 @@ public class CSL {
             report.checkLength(data, offset, 1);
         return data[offset] != 0;
     }
+    static JSONObject getVariableType(JSONObject config, Map<String,Object> value) throws Exception {
+        String typeIndexKey = config.getString("typeIndex");
+        Object typeIndexValue = value.get(typeIndexKey);
+        JSONArray types = config.getJSONArray("types");
+        for(int t=0; t<types.length(); t++) {
+            JSONObject type = types.getJSONObject(t);
+            if(type.get("index") == typeIndexValue)
+                return type;
+        }
+        throw new Exception("variable type could not be determined");
+    }
     public static Map<String,Object> decodeObject(byte[] data, int offset, JSONObject config, CSLDecodeReport report) throws Exception {
         if(config.has("byteLength")) {
             int byteLength = config.getInt("byteLength");
@@ -225,18 +236,8 @@ public class CSL {
         for(int i=0; i<attributes.length(); i++) {
             JSONObject attribute = attributes.getJSONObject(i);
             String attributeName = attribute.getString("name");
-            if(attribute.getString("type").equals("variable")) {
-                String typeIndexKey = attribute.getString("typeIndex");
-                Object typeIndexValue = result.get(typeIndexKey);
-                JSONArray types = attribute.getJSONArray("types");
-                for(int t=0; t<types.length(); t++) {
-                    JSONObject type = types.getJSONObject(t);
-                    if(type.get("index") == typeIndexValue) {
-                        attribute = type;
-                        break;
-                    }
-                }
-            }
+            if(attribute.getString("type").equals("variable"))
+                attribute = getVariableType(attribute, result);
             CSLDecodeReport attributeReport = new CSLDecodeReport();
             Object attributeValue = decode(data, offset + totalLength, attribute, attributeReport);
             result.put(attributeName, attributeValue);
@@ -244,6 +245,36 @@ public class CSL {
         }
         if(report != null)
             report.length = totalLength;
+        return result;
+    }
+    public static byte[] encodeObject(Map<String,Object> value, JSONObject config) throws Exception {
+        ArrayList<byte[]> bytesArray = new ArrayList<>();
+        int totalLength = 0;
+        JSONArray attributes = config.getJSONArray("attributes");
+        for(int i=0; i<attributes.length(); i++) {
+            JSONObject attribute = attributes.getJSONObject(i);
+            String attributeName = attribute.getString("name");
+            if(attribute.getString("type").equals("variable"))
+                attribute = getVariableType(attribute, value);
+            Object attributeValue;
+            if(attribute.has("value"))
+                attributeValue = attribute.get("value");
+            else if(value.containsKey(attributeName))
+                attributeValue = value.get(attributeName);
+            else if(attribute.has("optional") && attribute.getBoolean("optional"))
+                continue;
+            else
+                throw new Exception("value does not contain attribute: " + attributeName);
+            byte[] attributeBytes = encode(attributeValue, attribute);
+            bytesArray.add(attributeBytes);
+            totalLength += attributeBytes.length;
+        }
+        byte[] result = new byte[totalLength];
+        int offset = 0;
+        for(byte[] bytes : bytesArray) {
+            System.arraycopy(bytes, 0, result, offset, bytes.length);
+            offset += bytes.length;
+        }
         return result;
     }
     public static Map<String,Object> decodeBitmask(byte[] data, int offset, JSONObject config, CSLDecodeReport report) throws Exception {
@@ -264,6 +295,22 @@ public class CSL {
         }
         return result;
     }
+    public static byte[] encodeBitmask(Map<String,Object> value, JSONObject config) throws Exception {
+        byte result = 0;
+        JSONArray attributes = config.getJSONArray("attributes");
+        for(int i=0; i<attributes.length(); i++) {
+            JSONObject attribute = attributes.getJSONObject(i);
+            String name = attribute.getString("name");
+            int mask = attribute.getInt("mask");
+            int maskShift = 0;
+            while(((1 << maskShift) & mask) == 0)
+                maskShift++;
+            Object attrValue = value.get(name);
+            byte attrByte = encode(attrValue, attribute)[0];
+            result |= (byte) ((attrByte << maskShift) & mask);
+        }
+        return new byte[]{result};
+    }
     public static Object[] decodeArray(byte[] data, int offset, JSONObject config, CSLDecodeReport report) throws Exception {
         if (!config.has("byteLength"))
             throw new Exception("Array config must have byteLength");
@@ -281,6 +328,23 @@ public class CSL {
             totalLength += itemDecodeReport.length;
         }
         return result.toArray();
+    }
+    public static byte[] encodeArray(Object[] value, JSONObject config) throws Exception {
+        JSONObject arrayItem = config.getJSONObject("arrayItem");
+        ArrayList<byte[]> bytesArray = new ArrayList<>();
+        int totalLength = 0;
+        for (Object itemValue : value) {
+            byte[] itemBytes = encode(itemValue, arrayItem);
+            bytesArray.add(itemBytes);
+            totalLength += itemBytes.length;
+        }
+        byte[] result = new byte[totalLength];
+        int offset = 0;
+        for (byte[] bytes : bytesArray) {
+            System.arraycopy(bytes, 0, result, offset, bytes.length);
+            offset += bytes.length;
+        }
+        return result;
     }
     public static Object decode(byte[] data, int offset, JSONObject config, CSLDecodeReport report) throws Exception {
         if(offset >= data.length)
@@ -311,6 +375,17 @@ public class CSL {
                 return encodeNumber((Number)value, config);
             case "string":
                 return encodeString((String)value, config);
+            case "bytes":
+                return (byte[])value;
+            case "boolean":
+                return new byte[]{(byte)(((Boolean)value) ? 1 : 0)};
+            case "object":
+                if(config.has("objectType") && config.getString("objectType").equals("bitmask"))
+                    return encodeBitmask((Map<String,Object>)value, config);
+                else
+                    return encodeObject((Map<String,Object>)value, config);
+            case "array":
+                return encodeArray((Object[])value, config);
             default:
                 throw new Exception("Unknown type: " + config.getString("type"));
         }

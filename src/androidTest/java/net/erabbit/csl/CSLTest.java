@@ -132,12 +132,14 @@ public class CSLTest {
         assertArrayEquals(new byte[]{(byte)0xFF,0x12}, bytes);
     }
     @Test
-    public void decode_bytes() throws Exception {
+    public void bytes() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"bytes\",\"byteLength\":3}");
         CSL.CSLDecodeReport report = new CSL.CSLDecodeReport();
         Object result = CSL.decode(new byte[]{0x01,0x02,0x03}, 0, config, report);
         assertArrayEquals(new byte[]{0x01,0x02,0x03}, (byte[])result);
         assertEquals((long)3, (long)report.length);
+        byte[] bytes = CSL.encode(new byte[]{0x01,0x02,0x03}, config);
+        assertArrayEquals(new byte[]{0x01,0x02,0x03}, bytes);
     }
     @Test
     public void decode_bytes_no_byteLength() throws Exception {
@@ -148,49 +150,59 @@ public class CSLTest {
         assertEquals((long)3, (long)report.length);
     }
     @Test
-    public void decode_boolean() throws Exception {
+    public void test_boolean() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"boolean\"}");
         CSL.CSLDecodeReport report = new CSL.CSLDecodeReport();
         Object result = CSL.decode(new byte[]{0x01}, 0, config, report);
         assertEquals(true, result);
         assertEquals((long)1, (long)report.length);
+        byte[] bytes = CSL.encode(true, config);
+        assertArrayEquals(new byte[]{0x01}, bytes);
     }
     @Test
-    public void decode_object_bitmask() throws Exception {
+    public void test_bitmask() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"object\",\"objectType\":\"bitmask\",\"attributes\":[{\"name\":\"a\",\"type\":\"boolean\",\"mask\":1},{\"name\":\"b\",\"type\":\"boolean\",\"mask\":2},{\"name\":\"c\",\"type\":\"number\",\"numberType\":\"uint8\",\"mask\":240}]}");
         CSL.CSLDecodeReport report = new CSL.CSLDecodeReport();
-        Map<String,Object> result = (Map<String,Object>)CSL.decode(new byte[]{0x21}, 0, config, report);
-        assertSame(result.getClass(), HashMap.class);
-        assertEquals(true, result.get("a"));
-        assertEquals(false, result.get("b"));
-        assertEquals(2, result.get("c"));
+        Map<String,Object> value = (Map<String,Object>)CSL.decode(new byte[]{0x21}, 0, config, report);
+        assertSame(value.getClass(), HashMap.class);
+        assertEquals(true, value.get("a"));
+        assertEquals(false, value.get("b"));
+        assertEquals(2, value.get("c"));
+        byte[] bytes = CSL.encode(value, config);
+        assertArrayEquals(new byte[]{0x21}, bytes);
     }
     @Test
-    public void decode_object() throws Exception {
+    public void test_object() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"object\",\"attributes\":[{\"name\":\"n\",\"type\":\"number\",\"numberType\":\"uint8\"},{\"name\":\"s\",\"type\":\"string\",\"byteLength\":3}]}");
         CSL.CSLDecodeReport report = new CSL.CSLDecodeReport();
-        Map<String,Object> result = (Map<String,Object>)CSL.decode(new byte[]{0x01,0x30,0x31,0x32}, 0, config, report);
-        assertSame(result.getClass(), HashMap.class);
-        assertEquals(1, result.get("n"));
-        assertEquals("012", result.get("s"));
+        Map<String,Object> value = (Map<String,Object>)CSL.decode(new byte[]{0x01,0x30,0x31,0x32}, 0, config, report);
+        assertSame(value.getClass(), HashMap.class);
+        assertEquals(1, value.get("n"));
+        assertEquals("012", value.get("s"));
+        byte[] bytes = CSL.encode(value, config);
+        assertArrayEquals(new byte[]{0x01,0x30,0x31,0x32}, bytes);
     }
     @Test
-    public void decode_object_variable_type() throws Exception {
+    public void test_object_variable_type() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"object\",\"attributes\":[{\"name\":\"category\",\"type\":\"number\",\"numberType\":\"uint8\",\"values\":[{\"name\":\"book\",\"value\":1},{\"name\":\"movie\",\"value\":2}]},{\"name\":\"info\",\"type\":\"variable\",\"typeIndex\":\"category\",\"types\":[{\"index\":1,\"type\":\"object\",\"attributes\":[{\"name\":\"pages\",\"type\":\"number\",\"numberType\":\"uint8\"}]},{\"index\":2,\"type\":\"object\",\"attributes\":[{\"name\":\"minutes\",\"type\":\"number\",\"numberType\":\"uint8\"}]}]}]}");
         CSL.CSLDecodeReport report = new CSL.CSLDecodeReport();
-        Map<String,Object> result = (Map<String,Object>)CSL.decode(new byte[]{0x01,(byte)180}, 0, config, report);
+        Map<String,Object> value = (Map<String,Object>)CSL.decode(new byte[]{0x01,(byte)180}, 0, config, report);
         assertEquals((long)2, (long)report.length);
-        assertSame(result.getClass(), HashMap.class);
-        assertEquals(1, result.get("category"));
-        Map<String,Object> info = (Map<String,Object>)result.get("info");
+        assertSame(value.getClass(), HashMap.class);
+        assertEquals(1, value.get("category"));
+        Map<String,Object> info = (Map<String,Object>)value.get("info");
         assertEquals(180, info.get("pages"));
+        byte[] bytes = CSL.encode(value, config);
+        assertArrayEquals(new byte[]{0x01,(byte)180}, bytes);
     }
     @Test
-    public void decode_array() throws Exception {
+    public void test_array() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"array\",\"byteLength\":3,\"arrayItem\":{\"type\":\"number\",\"numberType\":\"uint8\"}}");
         CSL.CSLDecodeReport report = new CSL.CSLDecodeReport();
-        Object[] result = (Object[])CSL.decode(new byte[]{0x01,0x02,0x03}, 0, config, report);
-        assertArrayEquals(new Object[]{1,2,3}, result);
+        Object[] value = (Object[])CSL.decode(new byte[]{0x01,0x02,0x03}, 0, config, report);
+        assertArrayEquals(new Object[]{1,2,3}, value);
         assertEquals((long)3, (long)report.length);
+        byte[] bytes = CSL.encode(value, config);
+        assertArrayEquals(new byte[]{0x01,0x02,0x03}, bytes);
     }
 }
