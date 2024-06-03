@@ -102,28 +102,34 @@ public class CSLTest {
         assertArrayEquals(new byte[]{0x0A}, bytes);
     }
     @Test
-    public void decode_string() throws Exception {
+    public void string() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"string\",\"byteLength\":5}");
         CSL.CSLDecodeReport report = new CSL.CSLDecodeReport();
         Object result = CSL.decode(new byte[]{0x48,0x65,0x6C,0x6C,0x6F}, 0, config, report);
         assertEquals("Hello", result);
         assertEquals((long)5, (long)report.length);
+        byte[] bytes = CSL.encode("Hello", config);
+        assertArrayEquals(new byte[]{0x48,0x65,0x6C,0x6C,0x6F}, bytes);
     }
     @Test
-    public void decode_string_padding() throws Exception {
+    public void string_padding() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"string\",\"byteLength\":10}");
         CSL.CSLDecodeReport report = new CSL.CSLDecodeReport();
         Object result = CSL.decode(new byte[]{0x48,0x65,0x6C,0x6C,0x6F,0x00,0x00,0x00,0x00,0x00}, 0, config, report);
         assertEquals("Hello", result);
         assertEquals((long)10, (long)report.length);
+        byte[] bytes = CSL.encode("Hello", config);
+        assertArrayEquals(new byte[]{0x48,0x65,0x6C,0x6C,0x6F,0x00,0x00,0x00,0x00,0x00}, bytes);
     }
     @Test
-    public void decode_string_hex() throws Exception {
+    public void string_hex() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"string\",\"byteLength\":2,\"stringEncoding\":\"hex\"}");
         CSL.CSLDecodeReport report = new CSL.CSLDecodeReport();
         Object result = CSL.decode(new byte[]{(byte)0xFF,0x12}, 0, config, report);
         assertEquals("FF12", result);
         assertEquals((long)2, (long)report.length);
+        byte[] bytes = CSL.encode("0xFF12", config);
+        assertArrayEquals(new byte[]{(byte)0xFF,0x12}, bytes);
     }
     @Test
     public void decode_bytes() throws Exception {

@@ -145,6 +145,53 @@ public class CSL {
             return new String(data, offset, byteLength);
         }
     }
+    public static byte[] parseHexString(String str) {
+        ArrayList<Byte> arrayList = new ArrayList<>();
+        int i = 0;
+        if(str.startsWith("0x"))
+            i = 2;
+        while(i < str.length()) {
+            int n = -1;
+            try {
+                n = Integer.parseInt(str.substring(i,i+1),16);
+            }
+            catch(NumberFormatException ignored) {}
+            i++;
+            if(n >= 0) {
+                if(i < str.length()) {
+                    int n1 = -1;
+                    try {
+                        n1 = Integer.parseInt(str.substring(i,i+1),16);
+                    }
+                    catch(NumberFormatException ignored) {}
+                    i++;
+                    if(n1 >= 0)
+                        n = n * 16 + n1;
+                }
+                arrayList.add((byte)n);
+            }
+        }
+        byte[] bytes = new byte[arrayList.size()];
+        for(i=0; i<arrayList.size(); i++)
+            bytes[i] = arrayList.get(i);
+        return bytes;
+    }
+    public static byte[] encodeString(String value, JSONObject config) throws Exception {
+        if(!config.has("byteLength"))
+            throw new Exception("String config must have byteLength");
+        int byteLength = config.getInt("byteLength");
+        byte[] result = new byte[byteLength];
+        byte[] bytes;
+        if(config.has("stringEncoding") && config.getString("stringEncoding").equals("hex"))
+            bytes = parseHexString(value);
+        else
+            bytes = value.getBytes();
+        int actualLength = Math.min(byteLength, bytes.length);
+        System.arraycopy(bytes, 0, result, 0, actualLength);
+        while(actualLength < byteLength)
+            result[actualLength++] = 0;
+        return result;
+    }
     public static byte[] decodeBytes(byte[] data, int offset, JSONObject config, CSLDecodeReport report) throws Exception {
         int byteLength;
         if(config.has("byteLength")) {
@@ -262,6 +309,8 @@ public class CSL {
         switch(config.getString("type")) {
             case "number":
                 return encodeNumber((Number)value, config);
+            case "string":
+                return encodeString((String)value, config);
             default:
                 throw new Exception("Unknown type: " + config.getString("type"));
         }
