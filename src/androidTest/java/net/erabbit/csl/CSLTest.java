@@ -183,6 +183,21 @@ public class CSLTest {
         assertArrayEquals(new byte[]{0x01,0x30,0x31,0x32}, bytes);
     }
     @Test
+    public void test_object_map() throws Exception {
+        JSONObject config = new JSONObject("{\"type\":\"object\",\"attributes\":[{\"name\":\"x\",\"type\":\"number\",\"numberType\":\"uint8\"},{\"name\":\"y\",\"type\":\"number\",\"numberType\":\"uint8\"},{\"name\":\"z\",\"type\":\"number\",\"numberType\":\"uint8\"},{\"name\":\"sensor\",\"type\":\"string\",\"byteLength\":3}],\"remap\":[\"sensor\",{\"key\":\"info\",\"attributes\":[\"x\",\"y\",\"z\"]}]}");
+        CSL.CSLDecodeReport report = new CSL.CSLDecodeReport();
+        Map<String,Object> value = (Map<String,Object>)CSL.decode(new byte[]{0x01,0x02,0x03,0x61,0x63,0x63}, 0, config, report);
+        assertSame(value.getClass(), HashMap.class);
+        assertEquals("acc", value.get("sensor"));
+        Map<String,Object> info = (Map<String,Object>)value.get("info");
+        assertEquals(1, info.get("x"));
+        assertEquals(2, info.get("y"));
+        assertEquals(3, info.get("z"));
+        assertEquals((long)6, (long)report.length);
+        byte[] bytes = CSL.encode(value, config);
+        assertArrayEquals(new byte[]{0x01,0x02,0x03,0x61,0x63,0x63}, bytes);
+    }
+    @Test
     public void test_object_variable_type() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"object\",\"attributes\":[{\"name\":\"category\",\"type\":\"number\",\"numberType\":\"uint8\",\"values\":[{\"name\":\"book\",\"value\":1},{\"name\":\"movie\",\"value\":2}]},{\"name\":\"info\",\"type\":\"variable\",\"typeIndex\":\"category\",\"types\":[{\"index\":1,\"type\":\"object\",\"attributes\":[{\"name\":\"pages\",\"type\":\"number\",\"numberType\":\"uint8\"}]},{\"index\":2,\"type\":\"object\",\"attributes\":[{\"name\":\"minutes\",\"type\":\"number\",\"numberType\":\"uint8\"}]}]}]}");
         CSL.CSLDecodeReport report = new CSL.CSLDecodeReport();

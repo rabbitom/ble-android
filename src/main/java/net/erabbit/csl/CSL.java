@@ -224,6 +224,43 @@ public class CSL {
         }
         throw new Exception("variable type could not be determined");
     }
+    static Map<String,Object> remapObject(Map<String,Object> value, JSONArray map) throws Exception {
+        Map<String,Object> result = new HashMap<>();
+        for(int i=0; i<map.length(); i++) {
+            Object entry = map.get(i);
+            if(entry.getClass().equals(String.class))
+                result.put((String)entry, value.get(entry));
+            else {
+                String key = ((JSONObject)entry).getString("key");
+                Map<String,Object> entryObject = new HashMap<>();
+                JSONArray attributes = ((JSONObject)entry).getJSONArray("attributes");
+                for(int j=0; j<attributes.length(); j++) {
+                    String attributeName = attributes.getString(j);
+                    entryObject.put(attributeName, value.get(attributeName));
+                }
+                result.put(key, entryObject);
+            }
+        }
+        return result;
+    }
+    static Map<String,Object> unmapObject(Map<String,Object> value, JSONArray map) throws Exception {
+        Map<String,Object> result = new HashMap<>();
+        for(int i=0; i<map.length(); i++) {
+            Object entry = map.get(i);
+            if(entry.getClass().equals(String.class))
+                result.put((String)entry, value.get(entry));
+            else {
+                String key = ((JSONObject)entry).getString("key");
+                Map<String,Object> entryObject = (Map<String,Object>)value.get(key);
+                JSONArray attributes = ((JSONObject)entry).getJSONArray("attributes");
+                for(int j=0; j<attributes.length(); j++) {
+                    String attributeName = attributes.getString(j);
+                    result.put(attributeName, entryObject.get(attributeName));
+                }
+            }
+        }
+        return result;
+    }
     public static Map<String,Object> decodeObject(byte[] data, int offset, JSONObject config, CSLDecodeReport report) throws Exception {
         if(config.has("byteLength")) {
             int byteLength = config.getInt("byteLength");
@@ -245,9 +282,14 @@ public class CSL {
         }
         if(report != null)
             report.length = totalLength;
-        return result;
+        if(config.has("remap"))
+            return remapObject(result, config.getJSONArray("remap"));
+        else
+            return result;
     }
     public static byte[] encodeObject(Map<String,Object> value, JSONObject config) throws Exception {
+        if(config.has("remap"))
+            value = unmapObject(value, config.getJSONArray("remap"));
         ArrayList<byte[]> bytesArray = new ArrayList<>();
         int totalLength = 0;
         JSONArray attributes = config.getJSONArray("attributes");
