@@ -85,6 +85,42 @@ public class CSL {
         else
             return number;
     }
+    public static byte[] encodeNumber(Number value, JSONObject config) throws Exception {
+        Number number = value;
+        if(config.has("scale")) {
+            double scale = config.getDouble("scale");
+            number = value.doubleValue() / scale;
+        }
+        String numberType = config.getString("numberType");
+        switch (numberType) {
+            case "uint8":
+                return new byte[]{number.byteValue()};
+            case "uint16be":
+                return new byte[]{(byte) ((number.intValue() >> 8) & 0xFF), (byte) (number.intValue() & 0xFF)};
+            case "uint16le":
+                return new byte[]{(byte) (number.intValue() & 0xFF), (byte) ((number.intValue() >> 8) & 0xFF)};
+            case "int16be":
+                return new byte[]{(byte) ((number.shortValue() >> 8) & 0xFF), (byte) (number.shortValue() & 0xFF)};
+            case "int16le":
+                return new byte[]{(byte) (number.shortValue() & 0xFF), (byte) ((number.shortValue() >> 8) & 0xFF)};
+            case "uint32be":
+                return new byte[]{(byte) ((number.longValue() >> 24) & 0xFF), (byte) ((number.longValue() >> 16) & 0xFF), (byte) ((number.longValue() >> 8) & 0xFF), (byte) (number.longValue() & 0xFF)};
+            case "uint32le":
+                return new byte[]{(byte) (number.longValue() & 0xFF), (byte) ((number.longValue() >> 8) & 0xFF), (byte) ((number.longValue() >> 16) & 0xFF), (byte) ((number.longValue() >> 24) & 0xFF)};
+            case "int32be":
+                return new byte[]{(byte) ((number.intValue() >> 24) & 0xFF), (byte) ((number.intValue() >> 16) & 0xFF), (byte) ((number.intValue() >> 8) & 0xFF), (byte) (number.intValue() & 0xFF)};
+            case "int32le":
+                return new byte[]{(byte) (number.intValue() & 0xFF), (byte) ((number.intValue() >> 8) & 0xFF), (byte) ((number.intValue() >> 16) & 0xFF), (byte) ((number.intValue() >> 24) & 0xFF)};
+            case "float32le": {
+                ByteBuffer byteBuffer = ByteBuffer.allocate(4);
+                byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+                byteBuffer.putFloat(number.floatValue());
+                return byteBuffer.array();
+            }
+            default:
+                throw new Exception("Unknown number type: " + numberType);
+        }
+    }
     public static String decodeString(byte[] data, int offset, JSONObject config, CSLDecodeReport report) throws Exception {
         if(!config.has("byteLength"))
             throw new Exception("String config must have byteLength");
@@ -218,7 +254,16 @@ public class CSL {
                     return decodeObject(data, offset, config, report);
             case "array":
                 return decodeArray(data, offset, config, report);
+            default:
+                throw new Exception("Unknown type: " + config.getString("type"));
         }
-        return null;
+    }
+    public static byte[] encode(Object value, JSONObject config) throws Exception {
+        switch(config.getString("type")) {
+            case "number":
+                return encodeNumber((Number)value, config);
+            default:
+                throw new Exception("Unknown type: " + config.getString("type"));
+        }
     }
 }

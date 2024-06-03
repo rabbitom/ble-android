@@ -14,70 +14,92 @@ import java.util.Map;
 @RunWith(AndroidJUnit4.class)
 public class CSLTest {
     @Test
-    public void decode_number_uint8() throws Exception {
+    public void number_uint8() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"number\",\"numberType\":\"uint8\"}");
-        Object result = CSL.decode(new byte[]{(byte)0xFF}, 0, config, null);
-        assertEquals(0xFF, result);
+        Object value = CSL.decode(new byte[]{(byte)0xFF}, 0, config, null);
+        assertEquals(0xFF, value);
+        byte[] bytes = CSL.encode(0xFF, config);
+        assertArrayEquals(new byte[]{(byte)0xFF}, bytes);
     }
     @Test
-    public void decode_number_uint16be() throws Exception {
+    public void number_uint16be() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"number\",\"numberType\":\"uint16be\"}");
-        Object result = CSL.decode(new byte[]{0x00,0x01}, 0, config, null);
-        assertEquals(0x0001, result);
+        Object value = CSL.decode(new byte[]{0x00,0x01}, 0, config, null);
+        assertEquals(0x0001, value);
+        byte[] bytes = CSL.encode(0x0001, config);
+        assertArrayEquals(new byte[]{0x00,0x01}, bytes);
     }
     @Test
-    public void decode_number_uint16le() throws Exception {
+    public void number_uint16le() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"number\",\"numberType\":\"uint16le\"}");
-        Object result = CSL.decode(new byte[]{0x00,(byte)0x80}, 0, config, null);
-        assertEquals(0x8000, result);
+        Object value = CSL.decode(new byte[]{0x00,(byte)0x80}, 0, config, null);
+        assertEquals(0x8000, value);
+        byte[] bytes = CSL.encode(0x8000, config);
+        assertArrayEquals(new byte[]{0x00,(byte)0x80}, bytes);
     }
     @Test
-    public void decode_number_int16be() throws Exception {
+    public void number_int16be() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"number\",\"numberType\":\"int16be\"}");
-        Object result = CSL.decode(new byte[]{(byte)0xFF,(byte)0xFE}, 0, config, null);
-        assertEquals((short)-2, result);
+        Object value = CSL.decode(new byte[]{(byte)0xFF,(byte)0xFE}, 0, config, null);
+        assertEquals((short)-2, value);
+        byte[] bytes = CSL.encode(-2, config);
+        assertArrayEquals(new byte[]{(byte)0xFF,(byte)0xFE}, bytes);
     }
     @Test
-    public void decode_number_int16le() throws Exception {
+    public void number_int16le() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"number\",\"numberType\":\"int16le\"}");
         Object result = CSL.decode(new byte[]{(byte)0xFE,(byte)0xFF}, 0, config, null);
         assertEquals((short)-2, result);
+        byte[] bytes = CSL.encode(-2, config);
+        assertArrayEquals(new byte[]{(byte)0xFE,(byte)0xFF}, bytes);
     }
     @Test
-    public void decode_number_int32be() throws Exception {
+    public void number_int32be() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"number\",\"numberType\":\"int32be\"}");
         Object result = CSL.decode(new byte[]{(byte)0xFF,(byte)0xFF,(byte)0xFF,(byte)0xFE}, 0, config, null);
         assertEquals(-2, result);
+        byte[] bytes = CSL.encode(-2, config);
+        assertArrayEquals(new byte[]{(byte)0xFF,(byte)0xFF,(byte)0xFF,(byte)0xFE}, bytes);
     }
     @Test
-    public void decode_number_int32le() throws Exception {
+    public void number_int32le() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"number\",\"numberType\":\"int32le\"}");
         Object result = CSL.decode(new byte[]{(byte)0xFE,(byte)0xFF,(byte)0xFF,(byte)0xFF}, 0, config, null);
         assertEquals(-2, result);
+        byte[] bytes = CSL.encode(-2, config);
+        assertArrayEquals(new byte[]{(byte)0xFE,(byte)0xFF,(byte)0xFF,(byte)0xFF}, bytes);
     }
     @Test
-    public void decode_number_uint32be() throws Exception {
+    public void number_uint32be() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"number\",\"numberType\":\"uint32be\"}");
         Object result = CSL.decode(new byte[]{(byte)0xFF,(byte)0xFF,(byte)0xFF,(byte)0xFE}, 0, config, null);
         assertEquals(0xFFFFFFFEL, result);
+        byte[] bytes = CSL.encode(0xFFFFFFFEL, config);
+        assertArrayEquals(new byte[]{(byte)0xFF,(byte)0xFF,(byte)0xFF,(byte)0xFE}, bytes);
     }
     @Test
-    public void decode_number_uint32le() throws Exception {
+    public void number_uint32le() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"number\",\"numberType\":\"uint32le\"}");
         Object result = CSL.decode(new byte[]{(byte)0xFE,(byte)0xFF,(byte)0xFF,(byte)0xFF}, 0, config, null);
         assertEquals(0xFFFFFFFEL, result);
+        byte[] bytes = CSL.encode(0xFFFFFFFEL, config);
+        assertArrayEquals(new byte[]{(byte)0xFE,(byte)0xFF,(byte)0xFF,(byte)0xFF}, bytes);
     }
     @Test
-    public void decode_number_float32le() throws Exception {
+    public void number_float32le() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"number\",\"numberType\":\"float32le\"}");
         Object result = CSL.decode(new byte[]{(byte)0x00,(byte)0x00,(byte)0xD0,(byte)0x40}, 0, config, null);
         assertEquals(6.5F, result);
+        byte[] bytes = CSL.encode(6.5F, config);
+        assertArrayEquals(new byte[]{(byte)0x00,(byte)0x00,(byte)0xD0,(byte)0x40}, bytes);
     }
     @Test
-    public void decode_number_scale() throws Exception {
+    public void number_scale() throws Exception {
         JSONObject config = new JSONObject("{\"type\":\"number\",\"numberType\":\"uint8\",\"scale\":0.1}");
-        Object result = CSL.decode(new byte[]{(byte)0x0A}, 0, config, null);
+        Object result = CSL.decode(new byte[]{0x0A}, 0, config, null);
         assertEquals(1.0, result);
+        byte[] bytes = CSL.encode(1.0, config);
+        assertArrayEquals(new byte[]{0x0A}, bytes);
     }
     @Test
     public void decode_string() throws Exception {
