@@ -1,5 +1,6 @@
 package net.erabbit.ble;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -44,19 +45,34 @@ public class BLEManager implements BLEScanCallback {
 
     private boolean isScanning = false;
 
-    private static BLEManager bleManager;
     private final LocalBroadcastManager lbm;
 
     private final BluetoothLeScanner mBluetoothLeScanner;
     private final ScanCallback mScanCallback;
 
-    public static BLEManager getInstance(Context context) {
+    private final Context context;
+
+    public Context getContext() {
+        return context;
+    }
+
+    @SuppressLint("StaticFieldLeak")
+    private static BLEManager bleManager;
+
+    public static BLEManager createInstance(Context context) {
         if (bleManager == null)
             bleManager = new BLEManager(context);
         return bleManager;
     }
 
+    public static BLEManager sharedInstance() {
+        if(bleManager == null)
+            throw new RuntimeException("BLEManager not created");
+        return bleManager;
+    }
+
     private BLEManager(Context context) {
+        this.context = context;
         lbm = LocalBroadcastManager.getInstance(context);
         BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         mBluetoothAdapter = bluetoothManager.getAdapter();

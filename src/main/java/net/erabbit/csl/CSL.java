@@ -121,6 +121,19 @@ public class CSL {
                 throw new Exception("Unknown number type: " + numberType);
         }
     }
+    public static String formatHexString(byte[] data, int offset, int length, String hexByteConnector) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for(int i=0; i<length; i++) {
+            stringBuilder.append(String.format("%02X", data[offset+i] & 0xFF));
+            if(i<length-1)
+                stringBuilder.append(hexByteConnector);
+        }
+        return stringBuilder.toString();
+
+    }
+    public static String formatHexString(byte[] data) {
+        return formatHexString(data, 0, data.length, "-");
+    }
     public static String decodeString(byte[] data, int offset, JSONObject config, CSLDecodeReport report) throws Exception {
         if(!config.has("byteLength"))
             throw new Exception("String config must have byteLength");
@@ -131,13 +144,7 @@ public class CSL {
             String hexByteConnector = "";
             if(config.has("hexByteConnector"))
                 hexByteConnector = config.getString("hexByteConnector");
-            StringBuilder stringBuilder = new StringBuilder();
-            for(int i=0; i<byteLength; i++) {
-                stringBuilder.append(String.format("%02X", data[offset+i] & 0xFF));
-                if(i<byteLength-1)
-                    stringBuilder.append(hexByteConnector);
-            }
-            return stringBuilder.toString();
+            return formatHexString(data, offset, byteLength, hexByteConnector);
         }
         else {
             while(byteLength > 0 && data[offset + byteLength - 1] == 0)
@@ -413,8 +420,15 @@ public class CSL {
     }
     public static byte[] encode(Object value, JSONObject config) throws Exception {
         switch(config.getString("type")) {
-            case "number":
-                return encodeNumber((Number)value, config);
+            case "number": {
+                if(value.getClass().equals(String.class)) {
+                    byte[] valueBytes = parseHexString((String)value);
+                    Integer intValue = valueBytes[0] & 0xFF;
+                    return encodeNumber(intValue, config);
+                }
+                else
+                    return encodeNumber((Number)value, config);
+            }
             case "string":
                 return encodeString((String)value, config);
             case "bytes":

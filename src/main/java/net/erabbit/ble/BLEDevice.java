@@ -1,6 +1,5 @@
 package net.erabbit.ble;
 
-import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
@@ -18,13 +17,10 @@ import androidx.annotation.NonNull;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
 
-import net.erabbit.ble.entity.Advertisement;
-import net.erabbit.ble.entity.Characteristic;
-import net.erabbit.ble.entity.DeviceObject;
-import net.erabbit.ble.entity.Service;
 import net.erabbit.ble.interfaces.DeviceStateCallback;
 import net.erabbit.ble.utils.BLEUtility;
 import net.erabbit.ble.utils.LogUtil;
+import net.erabbit.csl.CSL;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -32,10 +28,8 @@ import org.json.JSONObject;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
@@ -54,38 +48,25 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
         return metadata;
     }
 
-    private DeviceObject deviceObject;//JSON文件解析返回的对象
-    private HashMap<String, String> uuidToNameMap = new HashMap<>();
-
     private String deviceName;//设备名称，默认使用广播名或设备名，可以修改
-    private Map advertisementData;//广播数据，字典类型
     private int deviceRSSI;
 
-    protected transient Context context;//子类中可能需要使用
-    private transient LocalBroadcastManager lbm;
+    private LocalBroadcastManager lbm;
 
-    private transient BluetoothDevice nativeDevice;//系统原生的蓝牙设备对象
-    private transient BluetoothGatt btGatt;
+    private BluetoothDevice nativeDevice;//系统原生的蓝牙设备对象
+    private BluetoothGatt btGatt;
 
-    private transient HashMap<String, BluetoothGattCharacteristic> gattCharacteristicMap = new HashMap<>();
+    private Map<String, BluetoothGattCharacteristic> characteristicsByName = new HashMap<>();
+    private Map<UUID, String> characteristicNamesByUUID = new HashMap<>();
 
     public String getDeviceId() {
         return nativeDevice.getAddress();
     }
 
-    public BLEDevice(@NonNull BluetoothDevice device) {
-        nativeDevice = device;
-        try {
-            deviceName = nativeDevice.getName();
-        }
-        catch(SecurityException exception) {
-            LogUtil.e(TAG, exception.getMessage());
-        }
-    }
-
     public BLEDevice(ScanResult scanResult) {
         nativeDevice = scanResult.getDevice();
         updateStatus(scanResult);
+        lbm = LocalBroadcastManager.getInstance(BLEManager.sharedInstance().getContext());
     }
 
     public void updateStatus(ScanResult scanResult) {
@@ -100,94 +81,6 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
         }
     }
 
-    public BLEDevice(Context context, BluetoothDevice device, JSONObject jsonObject) {
-        this.context = context;
-        lbm = LocalBroadcastManager.getInstance(context);
-        nativeDevice = device;
-        if(device != null) {
-            try {
-                deviceName = nativeDevice.getName();
-            }
-            catch(SecurityException exception) {
-                LogUtil.e(TAG, exception.getMessage());
-            }
-        }
-        else {
-            deviceName = "";
-        }
-        try {
-            deviceObject = parseJson(jsonObject);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
-        if (deviceObject != null) {
-            LogUtil.i(TAG, "===deviceObject.services.size()= " + deviceObject.services.size());
-            for (int i = 0; i < deviceObject.services.size(); i++) {
-                Service service = deviceObject.services.get(i);
-                LogUtil.i(TAG, "===service.characteristics.size()= " + service.characteristics.size());
-                for (int j = 0; j < service.characteristics.size(); j++) {
-                    Characteristic characteristic = service.characteristics.get(j);
-                    LogUtil.i(TAG, "===characteristic.uuid= " + characteristic.uuid);
-                    String uuidStr = characteristic.uuid;
-                    if(uuidStr.length() == 4)
-                        uuidStr = BLEUtility.UUIDFromShort(uuidStr).toString();
-                    uuidToNameMap.put(uuidStr.toLowerCase(), characteristic.name);
-                }
-            }
-        }
-
-    }
-
-    //解析JSON
-    public static DeviceObject parseJson(JSONObject jsonObject) throws JSONException {
-
-        DeviceObject deviceObject = new DeviceObject();
-        String version = jsonObject.getString("version");
-        deviceObject.version = version;
-
-        Advertisement advertisement = new Advertisement();
-        JSONObject object = jsonObject.getJSONObject("advertisement");
-        String name = object.getString("name");
-        String service = object.getString("service");
-        advertisement.name = name;
-        advertisement.service = service;
-        deviceObject.advertisement = advertisement;
-
-        ArrayList<Service> services = new ArrayList<Service>();
-        JSONArray jsonArray = jsonObject.getJSONArray("services");
-        for (int i = 0; i < jsonArray.length(); i++) {
-            Service serv = new Service();
-            JSONObject servObject = jsonArray.getJSONObject(i);
-            String sUuid = servObject.getString("uuid");
-            String sName = servObject.getString("name");
-            ArrayList<Characteristic> characteristics = new ArrayList<>();
-            JSONArray charactJsonArray = servObject.getJSONArray("characteristics");
-            for (int j = 0; j < charactJsonArray.length(); j++) {
-                Characteristic characteristic = new Characteristic();
-                JSONObject cObject = charactJsonArray.getJSONObject(j);
-                String cUuid = cObject.getString("uuid");
-                String cName = cObject.getString("name");
-                ArrayList<String> properties = new ArrayList<>();
-                JSONArray propertyArray = cObject.getJSONArray("properties");
-                for (int k = 0; k < propertyArray.length(); k++) {
-                    String property = propertyArray.getString(k);
-                    properties.add(property);
-                }
-                characteristic.name = cName;
-                characteristic.uuid = cUuid;
-                characteristic.properties = properties;
-                characteristics.add(characteristic);
-            }
-            serv.name = sName;
-            serv.uuid = sUuid;
-            serv.characteristics = characteristics;
-            services.add(serv);
-        }
-        deviceObject.services = services;
-        return deviceObject;
-    }
-
     public String getDeviceName() {
         return deviceName;
     }
@@ -197,7 +90,7 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
     }
 
     public boolean getConnected() {
-        BluetoothManager btManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        BluetoothManager btManager = (BluetoothManager) BLEManager.sharedInstance().getContext().getSystemService(Context.BLUETOOTH_SERVICE);
         int connectionState = BluetoothGatt.STATE_DISCONNECTED;
         try {
             connectionState = btManager.getConnectionState(nativeDevice, BluetoothProfile.GATT);
@@ -206,18 +99,6 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
             LogUtil.e(TAG, exception.getMessage());
         }
         return (connectionState == BluetoothGatt.STATE_CONNECTED);
-    }
-
-    public DeviceObject getDeviceObject() {
-        return deviceObject;
-    }
-
-    public void setAdvertisementData(Map data) {
-        this.advertisementData = data;
-    }
-
-    public Map getAdvertisementData(){
-        return  advertisementData;
     }
 
     /**
@@ -230,7 +111,7 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
                 if (btGatt == null) {
                     if (mGattCallback == null)
                         mGattCallback = getGattCallback();
-                    btGatt = nativeDevice.connectGatt(context, false, mGattCallback);
+                    btGatt = nativeDevice.connectGatt(BLEManager.sharedInstance().getContext(), false, mGattCallback);
                 } else
                     btGatt.connect();
             }
@@ -261,11 +142,10 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
      * @param name 数据点
      * @param data 数据内容
      */
-    public void sendData(String name, byte[] data) {
-
-        BluetoothGattCharacteristic characteristic = gattCharacteristicMap.get(name);
+    public void writeData(String name, byte[] data) {
+        BluetoothGattCharacteristic characteristic = characteristicsByName.get(name);
         if (btGatt != null && characteristic != null) {
-            Log.i(TAG, "sendData_uuid = " + characteristic.getUuid());
+            Log.i(TAG, "write data, characteristic=" + name + ", data=(" + data.length + ")0x" + CSL.formatHexString(data));
             BluetoothGattOperation operation = new BluetoothGattOperation(
                     BluetoothGattOperation.WRITE_CHARACTERISTIC,
                     btGatt,
@@ -281,11 +161,9 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
      * @param name 数据点
      */
     public void readData(String name) {
-
-        BluetoothGattCharacteristic characteristic = gattCharacteristicMap.get(name);
-
+        BluetoothGattCharacteristic characteristic = characteristicsByName.get(name);
         if (btGatt != null && characteristic != null) {
-
+            Log.i(TAG, "read data, characteristic=" + name);
             BluetoothGattOperation operation = new BluetoothGattOperation(
                     BluetoothGattOperation.READ_CHARACTERISTIC,
                     btGatt,
@@ -300,11 +178,10 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
      *
      * @param name 数据点
      */
-    public void startReceiveData(String name) {
-
-        BluetoothGattCharacteristic characteristic = gattCharacteristicMap.get(name);
+    public void startNotification(String name) {
+        BluetoothGattCharacteristic characteristic = characteristicsByName.get(name);
         if (btGatt != null && characteristic != null) {
-            Log.i(TAG, "startReceiveData_uuid = " + characteristic.getUuid());
+            Log.i(TAG, "start notification: characteristic=" + name);
             BluetoothGattOperation operation = new BluetoothGattOperation(
                     BluetoothGattOperation.ENABLE_NOTIFICATION,
                     btGatt,
@@ -319,9 +196,10 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
      *
      * @param name 数据点
      */
-    public void stopReceiveData(String name) {
-        BluetoothGattCharacteristic characteristic = gattCharacteristicMap.get(name);
+    public void stopNotification(String name) {
+        BluetoothGattCharacteristic characteristic = characteristicsByName.get(name);
         if (btGatt != null && characteristic != null) {
+            Log.i(TAG, "stop notification: characteristic=" + name);
             BluetoothGattOperation operation = new BluetoothGattOperation(
                     BluetoothGattOperation.DISABLE_NOTIFICATION,
                     btGatt,
@@ -335,18 +213,18 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
      * 读取设备信号强度
      */
     public void readRSSI() {
-        try {
-            btGatt.readRemoteRssi();
-        }
-        catch(SecurityException exception) {
-            LogUtil.e(TAG, exception.getMessage());
-        }
+        if(btGatt != null)
+            try {
+                btGatt.readRemoteRssi();
+            }
+            catch(SecurityException exception) {
+                LogUtil.e(TAG, "read rssi failed: " + exception.getMessage());
+            }
     }
 
     public int getDeviceRSSI() {
         return deviceRSSI;
     }
-
 
     //GATT操作队列
     private transient Queue<BluetoothGattOperation> gattOperationQueue;
@@ -380,7 +258,7 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
             //连接状态改变
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                LogUtil.i(TAG, "connection state: " + BLEUtility.getConnectionState(newState));
+                LogUtil.i(TAG, "connection state change: deviceId=" + getDeviceId() + ", state=" + BLEUtility.getConnectionState(newState));
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     onDeviceConnected(getDeviceId());
                     //refreshDeviceCache(gatt);
@@ -406,65 +284,62 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
             //服务发现
             @Override
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-                //Log.i(TAG, "onServicesDiscovered");
-
-                if (status == BluetoothGatt.GATT_SUCCESS) {
-                    Log.i(TAG, "services discovered success");
-
-                    boolean isMatch = true;
-                    List<BluetoothGattService> services = gatt.getServices();
-
-                    ArrayList<String> deviceServUuidList = new ArrayList<>();
-                    for (int i = 0; i < services.size(); i++) {
-                        deviceServUuidList.add(services.get(i).getUuid().toString());
-                    }
-
-                    LogUtil.i(TAG, "services count = " + services.size());
-
-                    ArrayList<String> deviceCharactUuidList = new ArrayList<>();
-                    //保存所有服务的特征
-                    LogUtil.i(TAG, "====uuidToNameMap=" + uuidToNameMap.toString());
-                    for (BluetoothGattService service : services) {
-                        Log.i(TAG, "discovered service_uuid = " + service.getUuid());
-                        List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
-                        for (BluetoothGattCharacteristic characteristic : characteristics) {
-                            UUID cUuid = characteristic.getUuid();
-                            Log.i(TAG, "discovered characteristic_uuid = " + characteristic.getUuid());
-                            deviceCharactUuidList.add(cUuid.toString());
-                            String cName = uuidToNameMap.get(cUuid.toString());
-                            if (cName != null) {
-                                Log.i(TAG, "characteristic_cName = " + cName);
-                                gattCharacteristicMap.put(cName, characteristic);
-                            }
-                        }
-                    }
-
-                    //验证json文档与设备 服务和特性是否匹配
-                    for (int i = 0; i < deviceObject.services.size(); i++) {
-                        Service service = deviceObject.services.get(i);
-                        if (!deviceServUuidList.contains(service.uuid.toLowerCase())) {
-                            isMatch = false;
-                            break;
-                        }
-                        for (int j = 0; j < service.characteristics.size(); j++) {
-                            Characteristic characteristic = service.characteristics.get(j);
-                            if (!deviceCharactUuidList.contains(characteristic.uuid.toLowerCase())) {
-                                isMatch = false;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (!isMatch) {
-                        onDeviceMismatch(getDeviceId());
-                    }
-                    onDeviceReady(getDeviceId());
-
-                } else {
-                    LogUtil.i(TAG, "discover services failed");
+                if (status != BluetoothGatt.GATT_SUCCESS) {
+                    Log.e(TAG, "discover services failed");
                     disconnect();
-                    onDeviceError(getDeviceId(), 101, "discover services failed");
+                    onDeviceError(getDeviceId(), DEVICE_ERROR_DISCOVER_SERVICE_FAILED, "discover services failed");
+                    return;
                 }
+
+                Log.i(TAG, "services discovered: deviceId=" + getDeviceId() + ", services=" + gatt.getServices());
+
+                boolean isMatch = true;
+                if(metadata.has("services")) {
+                    try {
+                        JSONArray servicesArray = metadata.getJSONArray("services");
+                        for(int s=0; s<servicesArray.length(); s++) {
+                            JSONObject serviceObject = servicesArray.getJSONObject(s);
+                            String serviceUuidString = serviceObject.getString("uuid");
+                            UUID serviceUuid = UUID.fromString(serviceUuidString);
+                            BluetoothGattService service = gatt.getService(serviceUuid);
+                            if(service == null) {
+                                Log.e(TAG, "service not found: deviceId=" + getDeviceId() + ", service=" + serviceUuidString);
+                                isMatch = false;
+                                continue;
+                            }
+                            JSONArray characteristicsArray = serviceObject.getJSONArray("characteristics");
+                            for (int c = 0; c < characteristicsArray.length(); c++) {
+                                JSONObject characteristicObject = characteristicsArray.getJSONObject(c);
+                                String characteristicUuidString = characteristicObject.getString("uuid");
+                                UUID characteristicUuid = UUID.fromString(characteristicUuidString);
+                                BluetoothGattCharacteristic characteristic = service.getCharacteristic(characteristicUuid);
+                                String characteristicName = characteristicObject.getString("name");
+                                JSONArray properties = characteristicObject.getJSONArray("properties");
+                                if (characteristic != null) {
+                                    characteristicsByName.put(characteristicName, characteristic);
+                                    characteristicNamesByUUID.put(characteristicUuid, characteristicName);
+                                    for(int p=0; p<properties.length(); p++) {
+                                        if(properties.getString(p).equals("notify")) {
+                                            startNotification(characteristicName);
+                                            break;
+                                        }
+                                    }
+                                }
+                                else {
+                                    Log.e(TAG, "characteristic not found: deviceId=" + getDeviceId() + ", characteristic=" + characteristicName);
+                                    isMatch = false;
+                                }
+                            }
+                        }
+                    }
+                    catch(JSONException exception) {
+                        Log.e(TAG, "parse metadata services failed: " + exception.getMessage());
+                    }
+                }
+
+                if (!isMatch)
+                    onDeviceMismatch(getDeviceId());
+                onDeviceReady(getDeviceId());
             }
 
             private void onCharacteristicUpdated(BluetoothGattCharacteristic characteristic) {
@@ -472,8 +347,9 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
                 byte[] data = characteristic.getValue();
                 if (data != null) {
                     LogUtil.i(TAG, "received data: " + BLEUtility.MakeHexString(data));
-                    onDeviceReceivedData(getDeviceId(), uuidToNameMap.get(uuid.toString()), data);
-                    // onReceiveData(data);
+                    String characteristicName = characteristicNamesByUUID.get(uuid);
+                    if(characteristicName != null)
+                        onDeviceReceivedData(getDeviceId(), characteristicName, data);
                 }
             }
 
@@ -544,66 +420,65 @@ public class BLEDevice implements DeviceStateCallback, Serializable {
     }
 
     @Override
-    public void onDeviceConnected(String deviceID) {
-
+    public void onDeviceConnected(String deviceId) {
         Intent intent = new Intent(DeviceStateReceiver.DEVICE_CONNECTED);
-        intent.putExtra("deviceID", deviceID);
+        intent.putExtra("deviceId", deviceId);
         lbm.sendBroadcast(intent);
     }
 
     @Override
-    public void onDeviceReady(String deviceID) {
+    public void onDeviceReady(String deviceId) {
         Intent intent = new Intent(DeviceStateReceiver.DEVICE_READY);
-        intent.putExtra("deviceID", deviceID);
+        intent.putExtra("deviceId", deviceId);
         lbm.sendBroadcast(intent);
     }
 
     @Override
-    public void onDeviceMismatch(String deviceID) {
+    public void onDeviceMismatch(String deviceId) {
         Intent intent = new Intent(DeviceStateReceiver.DEVICE_MISMATCH);
-        intent.putExtra("deviceID", deviceID);
+        intent.putExtra("deviceId", deviceId);
         lbm.sendBroadcast(intent);
     }
 
     @Override
-    public void onDeviceDisconnected(String deviceID) {
+    public void onDeviceDisconnected(String deviceId) {
         Intent intent = new Intent(DeviceStateReceiver.DEVICE_DISCONNECTED);
-        intent.putExtra("deviceID", deviceID);
+        intent.putExtra("deviceId", deviceId);
         lbm.sendBroadcast(intent);
     }
 
     @Override
-    public void onDeviceReceivedData(String deviceID, String name, byte[] data) {
+    public void onDeviceReceivedData(String deviceId, String name, byte[] data) {
         Intent intent = new Intent(DeviceStateReceiver.DEVICE_RECEIVED_DATA);
-        intent.putExtra("deviceID", deviceID);
+        intent.putExtra("deviceId", deviceId);
         intent.putExtra("name", name);
         intent.putExtra("data", data);
         lbm.sendBroadcast(intent);
-
     }
 
     @Override
-    public void onDeviceValueChanged(String deviceID, int key, Serializable value) {
-        Intent intent = new Intent(DeviceStateReceiver.DEVICE_VALUE_CHANGED);
-        intent.putExtra("deviceID", deviceID);
+    public void onDeviceValueUpdated(String deviceId, int key, String name, Serializable value) {
+        Intent intent = new Intent(DeviceStateReceiver.DEVICE_VALUE_UPDATED);
+        intent.putExtra("deviceId", deviceId);
         intent.putExtra("key", key);
+        intent.putExtra("name", name);
         intent.putExtra("value", value);
         lbm.sendBroadcast(intent);
     }
 
     @Override
-    public void onDeviceError(String deviceID, int errId, String error) {
+    public void onDeviceError(String deviceId, int errId, String error) {
         Intent intent = new Intent(DeviceStateReceiver.DEVICE_ERROR);
-        intent.putExtra("deviceID", deviceID);
+        intent.putExtra("deviceId", deviceId);
         intent.putExtra("errId", errId);
         intent.putExtra("error", error);
         lbm.sendBroadcast(intent);
     }
 
     @Override
-    public void onDeviceRSSIUpdated(String deviceID, int rssi) {
+    public void onDeviceRSSIUpdated(String deviceId, int rssi) {
         Intent intent = new Intent(DeviceStateReceiver.DEVICE_RSSI_UPDATED);
-        intent.putExtra("deviceID", deviceID);
+        intent.putExtra("deviceId", deviceId);
         intent.putExtra("rssi", rssi);
         lbm.sendBroadcast(intent);
     }

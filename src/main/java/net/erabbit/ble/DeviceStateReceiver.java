@@ -15,15 +15,6 @@ import java.io.Serializable;
 
 public class DeviceStateReceiver extends BroadcastReceiver implements DeviceStateCallback {
 
-    public static final String DEVICE_CONNECTED = "DeviceConnected";
-    public static final String DEVICE_READY = "DeviceReady";
-    public static final String DEVICE_MISMATCH = "DeviceMismatch";
-    public static final String DEVICE_DISCONNECTED = "DeviceDisconnected";
-    public static final String DEVICE_RECEIVED_DATA = "DeviceReceivedData";
-    public static final String DEVICE_VALUE_CHANGED = "DeviceValueChanged";
-    public static final String DEVICE_ERROR = "DeviceError";
-    public static final String DEVICE_RSSI_UPDATED = "DeviceRSSIUpdated";
-
     public DeviceStateReceiver() {
     }
 
@@ -40,7 +31,7 @@ public class DeviceStateReceiver extends BroadcastReceiver implements DeviceStat
         intentFilter.addAction(DEVICE_MISMATCH);
         intentFilter.addAction(DEVICE_DISCONNECTED);
         intentFilter.addAction(DEVICE_RECEIVED_DATA);
-        intentFilter.addAction(DEVICE_VALUE_CHANGED);
+        intentFilter.addAction(DEVICE_VALUE_UPDATED);
         intentFilter.addAction(DEVICE_ERROR);
         intentFilter.addAction(DEVICE_RSSI_UPDATED);
         lbm.registerReceiver(this, intentFilter);
@@ -49,7 +40,7 @@ public class DeviceStateReceiver extends BroadcastReceiver implements DeviceStat
     @Override
     public void onReceive(Context context, Intent intent) {
 
-        String deviceID = intent.getStringExtra("deviceID");
+        String deviceID = intent.getStringExtra("deviceId");
         String name = intent.getStringExtra("name");
         byte[] data = intent.getByteArrayExtra("data");
         int key = intent.getIntExtra("key", 0);
@@ -74,8 +65,8 @@ public class DeviceStateReceiver extends BroadcastReceiver implements DeviceStat
             case DEVICE_RECEIVED_DATA:
                 onDeviceReceivedData(deviceID, name, data);
                 break;
-            case DEVICE_VALUE_CHANGED:
-                onDeviceValueChanged(deviceID, key, value);
+            case DEVICE_VALUE_UPDATED:
+                onDeviceValueUpdated(deviceID, key, name, value);
                 break;
             case DEVICE_ERROR:
                 onDeviceError(deviceID, errId, error);
@@ -112,7 +103,7 @@ public class DeviceStateReceiver extends BroadcastReceiver implements DeviceStat
     }
 
     @Override
-    public void onDeviceValueChanged(String deviceID, int key, Serializable value) {
+    public void onDeviceValueUpdated(String deviceID, int key, String name, Serializable value) {
 
     }
 
