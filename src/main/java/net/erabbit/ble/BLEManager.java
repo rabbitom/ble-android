@@ -6,10 +6,13 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.ParcelUuid;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -154,8 +157,13 @@ public class BLEManager implements BLEScanCallback {
 
     public void startScan() {
         if(mBluetoothAdapter.isEnabled()) {
+            ScanSettings.Builder scanSettingsBuilder = new ScanSettings.Builder();
+            scanSettingsBuilder.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY);
+            scanSettingsBuilder.setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES);
+            ScanSettings scanSettings = scanSettingsBuilder.build();
+            List<ScanFilter> filters = new ArrayList<>();
             try {
-                mBluetoothLeScanner.startScan(mScanCallback);
+                mBluetoothLeScanner.startScan(filters, scanSettings, mScanCallback);
                 isScanning = true;
             }
             catch(SecurityException exception) {
