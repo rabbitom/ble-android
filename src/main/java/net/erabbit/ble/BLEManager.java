@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class BLEManager implements BLEScanCallback {
 
@@ -98,6 +99,14 @@ public class BLEManager implements BLEScanCallback {
                                     String uuid = serviceData.getString("uuid");
                                     ParcelUuid parcelUuid = new ParcelUuid(BLEUtility.UUIDFromShort(uuid));
                                     if(scanRecord != null && scanRecord.getServiceData(parcelUuid) != null) {
+                                        deviceClassMetadata = metadata;
+                                        break;
+                                    }
+                                }
+                                else if(scanFilters.has("serviceUUID")) {
+                                    String uuid = scanFilters.getString("serviceUUID");
+                                    ParcelUuid parcelUuid = new ParcelUuid(UUID.fromString(uuid));
+                                    if(scanRecord != null && scanRecord.getServiceUuids().contains(parcelUuid)) {
                                         deviceClassMetadata = metadata;
                                         break;
                                     }
