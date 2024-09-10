@@ -278,6 +278,8 @@ public class CSL {
         JSONArray attributes = config.getJSONArray("attributes");
         int totalLength = 0;
         for(int i=0; i<attributes.length(); i++) {
+            if(offset + totalLength >= data.length)
+                break;
             JSONObject attribute = attributes.getJSONObject(i);
             String attributeName = attribute.getString("name");
             if(attribute.getString("type").equals("variable"))
