@@ -81,16 +81,17 @@ public class CSL {
                 throw new Exception("Unknown number type: " + numberType);
         }
         if(config.has("scale"))
-            return number.doubleValue() * config.getDouble("scale");
-        else
-            return number;
+            number = number.doubleValue() * config.getDouble("scale");
+        if(config.has("offset"))
+            number = number.doubleValue() + config.getDouble("offset");
+        return number;
     }
     public static byte[] encodeNumber(Number value, JSONObject config) throws Exception {
         Number number = value;
-        if(config.has("scale")) {
-            double scale = config.getDouble("scale");
-            number = value.doubleValue() / scale;
-        }
+        if(config.has("offset"))
+            number = value.doubleValue() - config.getDouble("offset");
+        if(config.has("scale"))
+            number = value.doubleValue() / config.getDouble("scale");
         String numberType = config.getString("numberType");
         switch (numberType) {
             case "uint8":
