@@ -396,4 +396,34 @@ public class BLEUtility {
         return permissionsToRequest;
     }
 
+    /**
+     * 将 MAC 地址字符串转换为 long 整数
+     * @param macAddress MAC 地址字符串 (例如 "00:1A:2B:3C:4D:5E")
+     * @return 转换后的 long 整数
+     */
+    public static long macToLong(String macAddress) {
+        String[] macParts = macAddress.split(":");
+        long macLong = 0;
+        for (String part : macParts) {
+            macLong = (macLong << 8) | Integer.parseInt(part, 16);
+        }
+        return macLong;
+    }
+
+    /**
+     * 将 long 整数转换为 MAC 地址字符串
+     * @param macLong MAC 地址的 long 整数
+     * @return 转换后的 MAC 地址字符串 (例如 "00:1A:2B:3C:4D:5E")
+     */
+    public static String longToMac(long macLong) {
+        StringBuilder macAddress = new StringBuilder();
+        for (int i = 5; i >= 0; i--) {
+            macAddress.append(String.format("%02X", (macLong >> (i * 8)) & 0xFF));
+            if (i > 0) {
+                macAddress.append(":");
+            }
+        }
+        return macAddress.toString();
+    }
+
 }
